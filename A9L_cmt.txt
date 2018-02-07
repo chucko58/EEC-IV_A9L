@@ -1,0 +1,5112 @@
+
+1 |#################################################################################################### 
+1 |# Disassembly of Ford A9L EECIV
+1 |# Comments shamelessly stolen from various web listings and merged here
+1 |# 15Mhz Clock (2.4 uS HSI/HSO), ROM 2000-9fff, RAM 100-4ff, KAM 700-7ff ?
+1 |#####################################################################################################|#
+1 |# AD Channels:
+1 |# 0 TAR  1 VCAL  2 VPWR  3 OCC  4 SCCS  5 EGO2  6 MAF  7 TP  8 ECT  9 ACT A NDS  B EGO1  C EVP
+1 |#|# I/0 mappings:
+1 |# bitno or chan   0      1      2      3      4      5      6      7      8      9      10
+1 |# HSO: (chan)     INJ3   INJ4   INJ6   INJ7   INJ5   SPOUT  INJ1   INJ2   INJ8   KTS    S/W (1 mS)
+1 |# HSI: (bit)      PIP    KI     BP     STI           CID    VSS    IDM
+1 |# LSO: (bit)      SCVAC  DOL    EVR    ISC    SCVNT  MIL    ACC/WD FP
+1 |# BIDI:(bit)      ?      CANP   SHIFT  AM1    AM2    FAN    FANHI  ?
+1 |# 
+
+1 |# TAR   Throttle angle rate
+1 |# VCAL  Calibration constant (normally 2.5 volts)
+1 |# VPWR  Ignition key-on power 
+1 |# OCC   Open Circuit test voltage
+1 |# SCCS  Speed Control Command Switch
+1 |# EGO2  LH heated exhaust gas sensor (oxygen)
+1 |# MAF   Mass air flow sensor
+1 |# TP    Throttle position 
+1 |# ECT   Engine coolant temp sensor
+1 |# ACT   Air charge temp sensor
+1 |# NDS   PRNDL(AUTO) Clutch/Neutral(Manual)
+1 |# EGO1  RH heated exhaust sensor
+1 |# EVP   EGR valve position sensor|#
+
+1 |# INJn  Fuel Injectors 1 through 8
+1 |# KTS   pulsewidth (secs) of the charging pulse for knock sensing.
+1 |# SPOUT Spark output signal
+1 |# S/W   software interrupt - set every 1 millisec|#
+
+1 |# PIP   Profile ignition pickup
+1 |# KI    Knock indicated
+1 |# BP    Baromatic pressure sensor
+1 |# STI   Self test input
+1 |# CID   Camshaft Cyl No 1 identifier sensor
+1 |# VSS   Vehicle speed sensor
+1 |# IDM   Ignition diagnostic monitor|#
+
+1 |# SCVAC Speed Control Vacuum (speed control servo)
+1 |# DOL   Data Output Link 
+1 |# EVR   EGR Vacuum Regulator
+1 |# ISC   Idle Speed Control (Bypass air solenoid)
+1 |# SCVNT Speed Control Vent   (speed control servo)
+1 |# MIL   Self test ouput / Malfunction indicator Light
+1 |# WD    LOS watchdog - must be flipped every 4 ms - also used for ACC cutoff
+1 |# FP    Fuel Pump|#
+
+1 |# CANP  Canister Purge
+1 |# SHIFT Shift light/indicator
+1 |# AM2   Air management solenoid 2 (Thermactor Air Diverter)
+1 |# AM1   Air Management solenoid 1 (Thermactor Air Bypass)
+1 |# FAN   engine coooling fan|#
+
+
+#1 |############################
+#1 |# FPM   Fuel pump relay monitor
+#1 |# WAC   Wide open throttle Ac cutout
+
+#1 |# ACCS  Air Con cycling switch
+1 |###############|# Register mappings:  Address, [Bit], Name,  notes |#################
+1 |# standard I/O int regs etc (0-0x11)
+
+1 |# 0 (Zero)  always zero 
+1 |# 2  @2 bits 6 $2:6 watchdog    7 $2:7
+1 |# 3  @3
+1 |# 4  @4
+1 |# 5  @5
+1 |# 6  @6
+1 |# 8  @8
+1 |# 9  @9
+1 |# a  @a bits  0 $a:0   1 $a:1  2 $a:2  3 $a:3  4 $a:4
+1 |# b  @b
+1 |# c  @c
+1 |# d  @d
+1 |# e  @e
+1 |# 10 @10
+1 |# 12 @12 (word)
+1 |#|# 14 - 22 general use|#
+1 |# 24 @24
+1 |#  0 $24:0 = Wide Open Throttle
+1 |#  1 $24:1 = RPM is < 850
+1 |#  2 $24:2 = Run Timer if set
+1 |#  3 $24:3 (?) 
+1 |#  4 $24:4=Console in use
+1 |#  5 $24:5 = Run Timer if set
+1 |#  6 $24:6    "
+1 |#  7 $24:7    "
+
+1 |# 25 @25
+1 |#  0 @25:0 Not Used ?
+1 |#  1 @25:1 STI ignored if set ? below temp threshhold
+1 |#  2 @25:2 
+1 |#  3 @25:3 
+1 |#  4 @25:4 
+1 |#  5 @25:5 
+1 |#  6 @25:6 
+1 |#  7 @25:7 
+
+
+
+
+1 |# 26 @26
+1 |#  0 @26:0  MAF count out of range error
+1 |#  1 @26:1 
+1 |#  2 @26:2 
+1 |#  3 @26:3 
+1 |#  4 @26:4 
+1 |#  5 @26:5 
+1 |#  6 @26:6 
+1 |#  7 @26:7 
+
+1 |# 27 @27
+1 |#  0 @27:0 
+1 |#  1 @27:1 
+1 |#  2 @27:2 
+1 |#  3 @27:3 
+1 |#  4 @27:4 Power Steering Flag
+1 |#  5 @27:5 
+1 |#  6 @27:6 
+1 |#  7 @27:7 
+
+
+1 |# 28 @28
+1 |#  0 @28:0  Egr enabled (zero at cranking)
+1 |#  1 @28:1 
+1 |#  2 @28:2 
+1 |#  3 @28:3 
+1 |#  4 @28:4 
+1 |#  5 @28:5 
+1 |#  6 @28:6 
+1 |#  7 @28:7 
+
+1 |# 29 @29
+
+1 |#  0 @29:0 
+1 |#  1 @29:1 
+1 |#  2 @29:2 
+1 |#  3 @29:3 
+1 |#  4 @29:4 
+1 |#  5 @29:5 
+1 |#  6 @29:6 
+1 |#  7 @29:7 
+
+
+1 |# 2a @2A VIP mode flags (diagnostic testing flags)
+1 |#  0 @2a:0 VSCDT Vehicle Speed Control thing
+1 |#  1 @2a:1 Vehicle Speed Control Self Test ?
+1 |#  2 @2a:2 VIP enable (self tests? ) set after engine running for 10 seconds?
+1 |#  3 @2a:3 disable - 'running' after reset - never cleared
+1 |#  4 @2a:4 Set if hardware fault detected ? - never cleared
+1 |#  5 @2a:5 engine is running
+1 |#  6 @2a:6 indicates KOEO test in progress (engine off)
+1 |#  7 @2a:7 disable VSCDT after reset - never cleared
+1 |#
+1 |# 2b @2b - flags
+1 |#  0 @2b:0 Self Test Output trigger
+1 |#  1 @2b:1 Passed Cyl Balance Test ?
+1 |#  2 @2b:2 Self Test Output trigger - to turn off STO
+1 |#  3 @2b:3 Self test error marker
+1 |#  4 @2b:4 Disable Idle Speed Control if set
+1 |#  5 @2b:5 STI input state
+1 |#  6 @2b:6 HEGO2 cross over voltage detected
+1 |#  7 @2b:7 HEGO1 cross over voltage detected
+
+
+
+1 |# 2c @2c
+1 |#  0 @2c:0 
+1 |#  1 @2c:1 
+1 |#  2 @2c:2 
+1 |#  3 @2c:3 
+1 |#  4 @2c:4 Sets STO time to 2mS instead of 0.5 secs ?
+1 |#  5 @2c:5 
+1 |#  6 @2c:6 
+1 |#  7 @2c:7 
+1 |# 2d @2d
+1 |#  0 @2d:0 
+1 |#  1 @2d:1 
+1 |#  2 @2d:2 
+1 |#  3 @2d:3 
+1 |#  4 @2d:4 Set at startup to await very first PIP interrupt (for intialisation etc)
+1 |#  5 @2d:5 
+1 |#  6 @2d:6 
+1 |#  7 @2d:7 
+1 |# 2e @2e
+1 |#  2 @2e:2 
+1 |#  3 @2e:3 
+1 |#  4 @2e:4 Fuel synchronization  request Set to request sequential injection? 
+1 |#  5 @2e:5 
+1 |#  6 @2e:6 Whether AE fuel is synchronous (1) or asynchronous (0). Initialized to 0.
+1 |#  7 @2e:7 Fuel synchronized with PIP - Sequential Injection in force ?
+1 |# 2f @2f
+1 |#  0 @2f:0 
+1 |#  1 @2f:1 
+1 |#  2 @2f:2 
+1 |#  3 @2f:3 
+1 |#  4 @2f:4 
+1 |#  5 @2f:5
+1 |#  6 @2f:6 
+1 |#  7 @2f:7 
+1 |#|# 30 - 42  General Use|#
+1 |# 44 @44 State of HSO (Output) lines (WORD)
+1 |#  0 @44:0 
+1 |#  1 @44:1 
+1 |#  2 @44:2 
+1 |#  3 @44:3 
+1 |#  4 @44:4 
+1 |#  5 @44:5 
+1 |#  6 @44:6 
+1 |#  7 @44:7 
+1 |#  8 @44:8 
+
+
+1 |#
+1 |# 46 @46 LSO image - sets LSO (R2) bits from this register
+1 |#  0 @46:0 
+1 |#  1 @46:1
+1 |#  2 @46:2
+1 |#  3 @46:3
+1 |#  4 @46:4 
+1 |#  5 @46:5 
+1 |#  6 @46:6 
+1 |#  7 @46:7 
+
+
+
+
+
+
+
+1 |# 47 @47  bidirectional IO (output) image - sets Low speed IO (R3) from this register
+1 |#  1 @47:1 
+1 |#  2 @47:2 
+1 |#  3 @47:3  Air management (thermactor)
+1 |#  4 @47:4  Air management (IAC)
+1 |#  5 @47:5 
+1 |#  6 @47:6 
+1 |#|# 48 - 4b General use|#
+1 |# 4c @4c
+1 |#  1 @4c:1 Skips time check (set with $4c:3?)
+1 |#  2 @4c:2 Set to disable max event count (12) in each time slice
+1 |#  3 @4c:3 Set to cause immediate HSO output (do not queue)
+1 |#  4 @4c:4 Set for empty queue ?
+1 |#  5 @4c:5 HSO output time has been missed
+1 |#  6 @4c:6 Events are queued (software queue)
+1 |#  7 @4c:7 Set for no queued events ?
+
+1 |# 4d @4d Not Used ?
+
+
+1 |# 4E @4e HSI bit flags
+1 |#  0 @4e:0 Indicates an unexpected HS Interrupt Occurred
+1 |#  1 @4e:1 
+1 |#  2 @4e:2 New BAP average calc required 
+1 |#  3 @4e:3 new RPM calc reqd
+1 |#  4 @4e:4 new IDM
+1 |#  5 @4e:5  - etc -
+1 |#  6 @4e:6 
+1 |#  7 @4e:7 
+1 |# 4F @4f 
+1 |#  0 @4f:0 A PIP 'double edge' (impossibly short time) has occurred - faulty sensor ?
+1 |#  1 @4f:1 
+1 |#  2 @4f:2 Timer overflow has occured (32 bit = 171.8 mins) 
+1 |#  3 @4f:3 
+1 |#  4 @4f:4 
+1 |#  5 @4f:5 
+1 |#  6 @4f:6 
+1 |#  7 @4f:7 
+
+
+1 |# 50 - 70  General use
+
+#1 |# 5c   @5c Filtered RPM.  Used for PIP Calculation switch 
+#1 |#|# 5e - 70 General use|#
+
+
+
+
+
+1 |# 72 @72 = 0x180 RAM Pointers, used as "Base+Offset" for indexed instructions
+1 |# 74 @74 = 0x27e
+1 |# 76 @76 = 0x37a 
+
+
+1 |# 78 @78 ROM Pointer 8eda  - overlaps F2 pointer, not obvious why
+1 |# 7a @7a (word)  
+1 |# 7c @7c (byte)
+1 |# 7d @7d Used for STO output ?
+1 |# 7e @7e Pointer to RAM table
+1 |# 80 @80 Calculated HSO Time  (for any output via HSO) 
+1 |# 82 @82 Calc HSO Time top 8 bits
+1 |# 83 @83 Image of Last HSI byte (state of interupt bits) 
+1 |# 84-86  General
+1 |# 87 @87 Image of HSI bits CHANGED since last HS Interrupt  
+1 |#  0 @87:0
+1 |#  1 @87:1 these set for handler reqd.
+1 |#  2 @87:2
+#1 |#  3 @87:3
+#1 |#  4 @87:4
+1 |#  5 @87:5
+1 |#  6 @87:6
+1 |#  7 @87:7
+
+1 |# 88 @88 Used as ROM pointer in HSO output routine (cell no) 
+1 |# 8a @8a Used as RAM pointer in HSO output routine (cell no) 
+
+1 |# 8C @8c master reference time, 24 bits 
+1 |# 8e @8e master reference time, 24 bits 
+1 |# 8f @8f Time delta for watchdog reset
+1 |# 90 @90 Last HSI status (for bit changes)
+1 |# 91 @91 pointer to 8 entries, each is count of HSO outputs queued. Per 5ms slice ?
+1 |# 92 @92 pointer to HSO or Injection entries in tables in RAM (HSOTable, InjTTab)
+1 |# 94 - 96 General, but used in STO output
+1 |#
+1 |# 98 NOT USED ?
+1 |# 9a @9a Mass flow after calculations (BAP, ACT etc)
+1 |# 9b @9b
+
+1 |# 9c @9c
+1 |# 9d @9d
+1 |# 9e @9e
+1 |# 9f @9f Initial Start value ECT - choke/enrich ?
+1 |# a0 @a0
+1 |#  0 @a0:0 
+1 |#  1 @a0:1 
+1 |#  2 @a0:2 
+1 |#  3 @a0:3 
+1 |#  4 @a0:4 
+1 |#  5 @a0:5 
+1 |#  6 @a0:6 
+1 |#  7 @a0:7 
+
+
+1 |# a1 @a1
+1 |#  0 @a1:0 engine at operating temp ( 170 < temp < 226 ) 
+1 |#  1 @a1:1 eng RPM something?
+1 |#  2 @a1:2 underspeed, RPM < ?
+1 |#  3 @a1:3 eng RPM something?
+1 |#  4 @a1:4 eng RPM something?
+1 |#  5 @a1:5 Canister Purge ?
+1 |#  6 @a1:6 eng RPM something?
+1 |#  7 @a1:7 set if RPM > 50
+1 |# a2 @a2
+1 |# a4 @a4
+1 |# a6 @a6
+1 |# a8 @a8
+
+1 |# AA @aa Throttle position ( )
+1 |# ac @ac
+1 |# AE @ae engine RPMx4 ( ) - Raw from calc
+1 |# B0 @b0 Engine Coolant Temperature in degrees Farenheit( )[multiply by 2]
+1 |# B1 @b1 Air Charge Temperature in degrees Farenheit( )[multiply by 2]
+1 |# b2 @b2
+1 |# b3 @b3
+1 |# b4 @b4
+
+
+1 |# b5 @b5 speed control flags = Cruise control
+# 1 |#  0 @b5:0 engine at operating temp ( 170 < temp < 226 ) 
+1 |#  1 @b5:1 Error ?
+#1 |#  2 @b5:2 
+1 |#  3 @b5:3 Resume Button
+1 |#  4 @b5:4 Accel  Button
+1 |#  5 @b5:5 Coast  Button
+1 |#  6 @b5:6 On     Button
+1 |#  7 @b5:7 Off    Button
+
+
+
+1 |# B6 @b6 MAP(BP) counts per unit of time
+1 |# b7 @b7 required ISC output frequency
+1 |# b8 @b8 required ISC duty cycle
+1 |# ba @ba PIP high event time, 24 bits
+1 |# bc @bc PIP high event time, 24 bits
+1 |# bd @bd A counter to indicate how often to update MKAY (linked to PIPs per rev)
+1 |# be @be PIP hi-lo time delta (Pulsewidth)
+1 |# c0 @c0 Half period multiplier.  Corrects for average error caused by hall effect sensor in distributor and armature.
+
+1 |# c2 @c2
+1 |# c4 @c4
+1 |#  0 @c4:0 
+1 |#  1 @c4:1 
+1 |#  2 @c4:2 Flag for very first VSS tick received. 
+1 |#  3 @c4:3 
+1 |#  4 @c4:4  
+1 |#  5 @c4:5 
+1 |#  6 @c4:6 
+1 |#  7 @c4:7 
+
+1 |# c5 @c5
+1 |#  0 @c5:0 
+1 |#  1 @c5:1 
+1 |#  2 @c5:2 
+1 |#  3 @c5:3 
+1 |#  4 @c5:4 
+1 |#  5 @c5:5 
+1 |#  6 @c5:6 
+1 |#  7 @c5:7 
+
+1 |# c6 @c6
+1 |# C8 @c8 Seconds since start (i.e. time since exiting crank mode, $a1:7 = 0)
+1 |# C9 @c9 Seconds since ECT became greater than TEMPFB  ($24:6 = 1)
+
+
+1 |# ca @ca
+1 |#  0 @ca:0 Do not use background timer for Filter subroutine call
+1 |#  1 @ca:1 
+1 |#  2 @ca:2 
+1 |#  3 @ca:3 
+1 |#  4 @ca:4 
+1 |#  5 @ca:5 
+1 |#  6 @ca:6 
+1 |#  7 @ca:7 
+
+1 |# CB @cb Time at WOT, sec. ($a1:2 = 1)
+
+1 |# CC @cc Time since Neutral/Drive Switch State change, sec.
+1 |# CD @cd Not at Closed throttle Timer, sec. ($24:2 = 1)
+1 |# CE @ce Managed Fuel Air Timer, sec.
+1 |# cf @cf Count of events in the HSO hardware queue.
+
+1 |# d0 @d0
+1 |# d1 @d1 Pointer to injection delay table ? incremented by 32 and checked when syncing ?
+1 |# d2 @d2
+1 |# d3 @d3
+1 |# d4 @d4
+1 |# d5 @d5
+
+
+1 |# d6 @d6
+1 |#  0 @d6:0 
+1 |#  1 @d6:1 
+1 |#  2 @d6:2 
+1 |#  3 @d6:3 
+1 |#  4 @d6:4 sets STO time to 5 mS instead of 0.5 secs ?
+1 |#  5 @d6:5 
+1 |#  6 @d6:6 
+1 |#  7 @d6:7 
+
+1 |# d7 @d7 Trouble Code Flags
+1 |#  0 @d7:0 
+1 |#  1 @d7:1 
+1 |#  2 @d7:2 
+1 |#  3 @d7:3 
+1 |#  4 @d7:4 
+1 |#  5 @d7:5 
+1 |#  6 @d7:6 
+1 |#  7 @d7:7 
+
+1 |# d8 @d8
+1 |#  0 @d8:0 
+1 |#  1 @d8:1 
+1 |#  2 @d8:2 
+1 |#  3 @d8:3 
+1 |#  4 @d8:4 
+1 |#  5 @d8:5 
+1 |#  6 @d8:6 Indicates KAM invalid for VIP.
+1 |#  7 @d8:7 
+
+1 |# d9 @d9
+1 |#  0 @d9:0 Prevents fuel pump being checked for timeout (normally 1 sec) 
+1 |#  1 @d9:1 
+1 |#  2 @d9:2 
+1 |#  3 @d9:3 
+1 |#  4 @d9:4 
+1 |#  5 @d9:5 
+1 |#  6 @d9:6 
+1 |#  7 @d9:7 
+
+1 |#da @da
+1 |#dc @dc
+1 |#de @de HSI changed bits, AND low speed changed input bits since last time
+1 |#e0 @e0
+1 |#e1 @e1
+1 |#e2 @e2
+1 |#e3 - e5 not used ?
+
+1 |#e6 @e6
+1 |#  0 @e6:0  
+1 |#  1 @e6:1 
+1 |#  2 @e6:2 
+1 |#  3 @e6:3 
+1 |#  4 @e6:4 
+1 |#  5 @e6:5 
+1 |#  6 @e6:6 
+1 |#  7 @e6:7 
+
+1 |#e7 @e7
+1 |#  0 @e7:0 Low speed limit - fire alternate injectors
+1 |#  1 @e7:1 Flip state for alternate firing
+1 |#  2 @e7:2 High speed limit - alternate fuel/spark
+1 |#  3 @e7:3 
+1 |#  4 @e7:4 
+1 |#  5 @e7:5 Full Fuel ?
+1 |#  6 @e7:6 - not used - ?
+1 |#  7 @e7:7  In 'Drive' if set
+
+
+1 |#e8 @e8
+1 |#  0 @e8:0 Control flags for ctntmr 
+1 |#  1 @e8:1 
+1 |#  2 @e8:2 
+1 |#  3 @e8:3 
+1 |#  4 @e8:4 
+1 |#  5 @e8:5 
+1 |#  6 @e8:6 
+1 |#  7 @e8:7 
+
+
+1 |#e9 @e9
+1 |#  0 @e9:0 
+1 |#  1 @e9:1 
+1 |#  2 @e9:2 
+1 |#  3 @e9:3 
+1 |#  4 @e9:4 
+1 |#  5 @e9:5 
+1 |#  6 @e9:6 
+1 |#  7 @e9:7 
+
+
+1 |#ea @ea
+1 |#  0 @ea:0 
+1 |#  1 @ea:1 
+1 |#  2 @ea:2 
+1 |#  3 @ea:3 
+1 |#  4 @ea:4 
+1 |#  5 @ea:5 
+1 |#  6 @ea:6 
+1 |#  7 @ea:7 
+
+
+1 |#eb @eb
+1 |#  0 @eb:0 
+1 |#  1 @eb:1 set when PIP is at narrow slot/signature PIP
+1 |#  2 @eb:2
+1 |#  3 @eb:3 
+1 |#  4 @eb:4 
+1 |#  5 @eb:5 
+1 |#  6 @eb:6 
+1 |#  7 @eb:7 
+
+
+1 |#ec @ec
+1 |#  0 @ec:0 Managed Fuel Air State flag, set to 1 if MFA is being used.
+1 |#  1 @ec:1 
+1 |#  2 @ec:2 
+1 |#  3 @ec:3 
+1 |#  4 @ec:4 
+1 |#  5 @ec:5 
+1 |#  6 @ec:6 
+1 |#  7 @ec:7 
+
+
+1 |#ed @ed
+1 |#  0 @ed:0 
+1 |#  1 @ed:1 
+1 |#  2 @ed:2 
+1 |#  3 @ed:3 
+1 |#  4 @ed:4 
+1 |#  5 @ed:5 
+1 |#  6 @ed:6 
+1 |#  7 @ed:7 
+
+
+1 |#ee @ee
+1 |#  0 @ee:0 
+1 |#  1 @ee:1 
+1 |#  2 @ee:2 
+1 |#  3 @ee:3 
+1 |#  4 @ee:4 
+1 |#  5 @ee:5 
+1 |#  6 @ee:6 
+1 |#  7 @ee:7 
+
+
+1 |#ef @ef
+1 |#  0 @ef:0 
+1 |#  1 @ef:1 
+1 |#  2 @ef:2 
+1 |#  3 @ef:3 
+1 |#  4 @ef:4 
+1 |#  5 @ef:5 
+1 |#  6 @ef:6 
+1 |#  7 @ef:7 
+
+
+
+
+1 |#|#F0 = 8c00  ROM 'Base' Pointers to data areas
+1 |#F2 = 8e5a  used as index pointers, i.e  "Base Reg+Offset" 
+1 |#F4 = 8fd6  Also R78 = 8eda ROM Pointer  
+1 |#F6 = 93a8
+1 |#F8 = 9430 
+1 |#FA = 97a8
+1 |#FC = 9a7e
+1 |#FE = 9e5a
+1 |#
+1 |# RAM locations 
+1 |# 100 @100 filtered TP (throttle Position)
+1 |# 102 @102 filtered EVP (for EGR position ?)
+1 |# 104 @104 filtered EPT (?)
+1 |# 106 @106 Filtered EGO (?)
+1 |# 108 @108 filtered RPM A
+1 |# 10A @10a MAP/BP
+1 |# 10C @10c KEYPWR reference voltage (Iivpwr)
+1 |# 10e @10e Open circuit ref voltage ? Iocc
+1 |# 110 @110 VCAL regulated voltage (2.5volts? )(Ivcal)
+1 |# 112 @112 ECT raw AD (Iect)
+1 |# 114 @114 ACT raw AD (Iact)
+1 |# 116 @116 EVP raw AD (Ievp)
+1 |# 118 @118 not used here (Iacc nds)
+1 |# 11A @11a NDS/A3C raw AD (multiplexed) (Iacc nds) 
+1 |# 11C @11c HEGO1 raw AD right side oxygen sensor (Iego1)
+1 |# 11E @11e HEGO2 raw AD (Iego2)
+1 |# 120 @120 ? TAR Throttle position sensor rate NOT USED ? (Itar)
+1 |# 122 @122 TP raw AD  (Itp)
+1 |# 124 @124 MAF (raw) (read at 2D33) (Imaf)
+1 |# 126 @126 Minimum Value when throttle closed (RATCH - from filtered TPS)
+1 |# 128 @128 default EVP - if sensor is bad  (Eoff)
+1 |# 12A @12a Time at closed throttle timer (secs)(set with CTTMR FLG)
+1 |# 12C @12c
+! |# 12E @12e
+1 |# 130 @130 Filtered Barometric Pressure
+1 |# 132 @132 FAM filter timer (sec)
+1 |# 134 @134 Time since CPU power -up  (mSecs)
+1 |# 136 @136 time since last BP pulse? (mS, counts up)
+1 |# 137 @137 High Power Demand Timer, secs
+1 |# 138 @138 Closed Throttle Upstream Air Timer (sec)
+1 |# 139 @139 Shift Light Timer.
+1 |# 13A @13A Adaptive fuel timer (sec)  ( 170 < ECT temp < 226 ?) 
+
+1 |# 13c @13c
+1 |# 13E @13E time since last PIP recieved
+1 |# 140 @140
+1 |# 142 @142
+1 |# 144 @144 Closed throttle neutral timer UP AND DOWN modes
+1 |# 145 @145 LOM load transition timer (sec)
+
+1 |# 146 @146 RPM sampling timer ?
+1 |# 147 @147 Time since incrementing LAMMUL (msec)
+1 |# 148 @148
+1 |# 149 @149 Canister purge accumulation timer (sec) (PRGFLG)
+1 |# 14A @14A Current Purge on time(PRGFLG)
+1 |# 14C @14C High Load Timer Time in 1/8 seconds. Incr only under high load, resets when not running under high load. High load is defined as a load (VE) greater than 70% when warm or 80% when cold.
+1 |# 14d @14d Secs since Entering RUN Mode ($a1:6 = 0) i.e. engine running 
+1 |# 14E @14e ElectroDrive Fan Timer (Sec)
+1 |# 14F @14F Time in CRANK Mode (1/8 sec)
+1 |# 150 @150 Decel fuel low load timer, sec.
+1 |# 152 @152
+1 |# 154 @154
+1 |# 156 @156
+1 |# 157 @157
+1 |# 158 @158
+1 |# 15a @15a
+1 |# 15c @15c
+1 |# 15e @15e
+1 |# 160 @160
+1 |# 162 @162
+1 |# 164 @164
+1 |# 166 @166
+1 |# 168 @168
+1 |# 16a @16a
+1 |# 16c @16c
+1 |# 16e @16e
+1 |# 170 @170 range checked EVP
+1 |# 172 @172 
+1 |# 174 @174 
+1 |# 176 @176 Pressure drop across the control orifice
+1 |# 178 @178 
+1 |# 17a @17a 
+1 |# 17c @17c 
+1 |# 17e @17e 
+1 |# 180 @180 Injector delay in degrees
+1 |# 182 @182
+1 |# 184 @184
+1 |# 186 @186
+1 |# 188 @188
+1 |# 18a @18a
+1 |# 18c @18c
+1 |# 18e @18e
+1 |# 190 @190
+1 |# 192 @192
+1 |# 194 @194
+1 |# 196 @196
+1 |# 198 @198
+1 |# 19a @19a
+1 |# 19c @19c
+1 |# 19e @19e
+1 |# 1a0 @1a0
+1 |# 1a2 @1a2
+1 |# 1a4 @1a4
+1 |# 1a6 @1a6
+1 |# 1a8 @1a8
+1 |# 1aa @1aa probably trouble codes stored from here to 1bd
+1 |# 1ac @1aa
+1 |# 1ae @1ae
+1 |# 1b0 @1b0
+1 |# 1b2 @1b2
+1 |# 1b4 @1b4
+1 |# 1b6 @1b6
+1 |# 1b8 @1b8
+1 |# 1ba @1ba
+1 |# 1BD @1BD 
+1 |# 1C0 @1C0 1/8 second timer for the MIL logic.
+1 |# 1C2 @1C2 Time since NO START flag set?
+1 |# 1C4 @1C4 Time since last idm
+1 |# 1C6 @1C6 VIP timer?
+1 |# 1C8 @1C8 Time since $2b:5   (R2B bit 5) 
+1 |# 1C9 @1C9 Vehicle Speed Sensor Time (.125 Sec) (Test only? )
+1 |# 1CA @1CA VIP timer?
+1 |# 1FE @1FE filtered BP
+1 |# 200 @200
+1 |# 202 @202
+1 |# 204 @204
+1 |# 206 @206 Injector Pulse Width in ms for Bank 1 (port 0)
+1 |# 208 @208 Injector Pulse Width in ms for Bank 2 (port 2)
+1 |# 20A @20A Desired fuel ratio for the left side bank of injectors. 
+1 |# 20C @20C Desired fuel ratio for the right side bank of injectors. Larger values mean LESS fuel
+1 |# 20e @20e Filtered desired EGR valve position.
+
+1 |# 210 @210 Closed Loop Flag. 1 = closed loop. 0 = fuel mixture taken from Tables and functions without feedback and trim from the HEGOs
+1 |# 211 @211 Battery Voltage Level [divided by 16]
+1 |# 212 @212
+
+1 |# 213 @213 Time since brake went on.(BIFLG)
+1 |# 214 @214 A/C Clutch Wide Open Throttle Time (Secs)
+1 |# 215 @215 A/C Clutch WOT Cutout Timer (1/8 Sec)
+1 |# 216 @216 A/C Clutch Transition Timer (1/8 Sec)
+1 |# 218 @218 Time since Idle Speed Control system was warned of impending increase in load (ACIFLG)
+1 |# 21C @21C Averaged (filtered) Load
+1 |# 21E @21E Time since the spark was last advanced by the KNOCK Strategy(KNOCK ENABLED) mSec.
+1 |# 220 @220 Not at WOT (Wide Open Throttle) Timer. (sec)
+1 |# 222 @222
+1 |# 224 @224
+1 |# 226 @226
+1 |# 228 @228
+1 |# 22a @22a
+1 |# 22b @22b
+1 |# 22c @22c
+1 |# 22d @22d
+1 |# 22e @22e
+1 |# 22f @22f
+1 |# 230 @230 
+1 |# 231 @231
+1 |# 232 @232
+1 |# 233 @233
+1 |# 234 @234 
+1 |# 236 @236 
+1 |# 238 @238
+1 |# 23a @23a 
+1 |# 23c @23c 
+1 |# 23e @23e Base amount of DWELL as a function of VBAT and TEMDWL, sec. Initial value = 0.005.
+
+
+1 |# 240 @240 
+1 |# 242 @242 
+1 |# 244 @244 
+1 |# 246 @246 
+1 |# 248 @248
+1 |# 24a @24a 
+1 |# 24c @24c
+1 |# 24d @24d
+1 |# 24e @24e  
+
+1 |# 250 @250 The current measured mass air flow in Kg/Hr
+1 |# 252 @252
+1 |# 254 @254
+1 |# 256 @256
+1 |# 258 @258
+1 |# 25A @25A 
+1 |# 25C @25C engine LOAD (= VE?)
+1 |# 25E @25e
+1 |# 260 @260 PERCENT LOAD Volumetric Efficiency in percent
+1 |# 262 @262
+1 |# 264 @264 Accumulated time EGR is enabled (sec)
+1 |# 266 @266 Seconds since EGO1 noswitch ($27:7 = 1) i.e.lack of switching ?
+1 |# 267 @267 Seconds since EGO2 noswitch ($27:6 = 1) i.e.lack of switching ?
+
+
+1 |# 27C @27C Filtered RPM B
+
+
+1 |# 288 @288 EM - EGR Mass Flow
+
+1 |# 29A @29A Total advance in crank degress before TDC( )[divide by 4]
+1 |# 29E @29E scaled and translated TAR ?
+1 |# 2A8 @2A8 VSCCS Debounce timer, sec.
+1 |# 2AC @2AC filtered vehicle speed B  (MPH)
+1 |# 2B2 @2B2 vehicle speed (MPH) unfiltered
+1 |# 2BB @2BB timer time since last VSS click
+1 |# 2BC @2BC filtered vehicle speed A  (MPH)
+1 |# 2BE @2be
+1 |# 2C0 @2c0
+
+1 ||##################################################################
+1 |# 2C5 @2c5 RAM based table for SPOUT, 8 injects and KTS?  (2c5-327)
+1 |# Format is 10 byte entries (5 bytes on, 5 bytes off)
+1 |# 0       link field.  FF if not in use (index to another 2C5 entry)
+1 |# 1       0 here to stop? (2C61) or index of corresponding 2284 table entry
+1 |# 2,3,4   24 bit IO time for HSO event
+1 |# 5       link field index to another 2C5 entry
+1 |# 6       index to corresponding 2284 Table entry
+1 |# 7,8,9   HSO Event time
+1 |##################################################################|
+#229e ||##################################################################
+#22a0 |# RAM Table at 2C5 - format -> 0A byte entries ( two 5 byte entries - one for on and one for off)
+#22a0 |# High to Low transition side
+#22a0 |# offset 0 - link field or FF if not in use (index of another 2C5 entry)
+#22a0 |# offset 1 - saves zero here to stop? (2C61) index of corresponding 2284 entry
+#22a0 |# offset 2,3,4 - 24 bit IO time for HSO event
+#22a0 |# Low to High transition side
+#22a0 |# offset 5 - link field index to another 2C5 entry
+#22a0 |# offset 6 - index to corresponding 2284 Table
+#22a0 |# offset 7,8,9 - time
+
+1 |# 2C5 = 3 (->2c8) to start chain ?
+1 |# 2C6 @2C6 Saved stack pointer - alternate stack used for interrupts and some tests
+1 |# 2C8 @2C8 First HSO queue entry - SPOUT  FF if inactive
+1 |# 2C9 @2c9
+1 |# 2CA @2ca
+1 |# 2CB @2CB
+1 |# 2CE @2CE Last PIP time (24 Bit)
+1 |# 2D0 @2D0 
+1 |#|# 2D1 @2D1 24 bit time  ( FROM L27EB, cylinder offset 0)
+1 |# 2D2 @2D2 
+1 |# 2D4 @2D4 (offset 0F) cylinder 1 HSO ch 6
+1 |# 2D5 @2D5 byte offset into 2C5 ?
+1 |# 2D6 @2D6 byte offset into 2284 Table?
+1 |# 2D7-2D9  HSO execution time for this channel
+1 |# 2D9 @2D9 (offset 14) +5
+1 |# 2D9 @2D9 offset link
+1 |# 2DA @2DA offset into 2284 Table 5C[R74]
+1 |# 2DB
+1 |# 2DC
+1 |#|# 2DD @2DD time hi 8 FROM L27EB (cylinder offset 1)
+1 |# 2DE @2DE time lo 16 FROM L27EB  THIS "LINK"24a7 TREATS THIS AS AN OFFSET 1 LINK ?
+#1 |# 32F3 @32F3 treats this as lsb of 24bit time
+#1 |# 27FE @27FE store ~PIP time in here
+#1 |# 249B @249B 6 Runs to hang
+1 |# 2DF
+1 |# 2E0 @2E0 cylinder 2 HSO 7
+1 |# 2e6 @2e6
+1 |# 2e7 @2e7
+1 |# 2EA @2EA cylinder 3 HSO 0
+1 |# 2f0 @2f0
+1 |# 2f1 @2f1
+
+1 |# 2F4 @2F4 cylinder 4 HSO 1
+1 |# 2fb @2fb
+
+1 |# 2FE @2FE cylinder 5 HSO 4
+
+1 |# 305 @305
+1 |# 208 @308 cylinder 6 HSO 2
+1 |# 309 @309 offset into 2284 Table
+1 |# 30f @30f
+1 |# 312 @312 cylinder 7 HSO 3
+1 |# 319 @319
+
+1 |# 31C @31C cylinder 8 HSO 8
+1 |# 322 @322 9TH - KTS ?
+1 |# 323 @323 
+1 |# 324 @324 
+1 |# 325 @325 
+1 |# 326 @326 
+1 |#|#
+1 |# 328 @328
+1 |# 32a @32a
+1 |# 32c @32c
+1 |# 32e @32e
+
+# |# 33a @33a Signature PIP half period multiplier - initial values = 1.66666 for 30%, 1.42857 for 35% duty cycle
+1 |# 33a @33a Signature PIP ratio / multiplier - for narrow slot (cyl 1) 
+1 |# 342 @342 base of Hard Trouble Code Error Table
+1 |# 3A8 @3A8 timer?
+1 |# 3AA @3AA timer?
+1 |# 3b4 @3b4 8 values for time slice SPOUT (0.6ms ?)
+1 |# 3bc @3bc
+1 |# 3bd @3bd
+1 |# 3be @3be
+1 |# 3c0 @3c0
+1 |# 3c2 @3c2
+
+1 |### End of RAM variables ?
+
+
+# 1 |# 3E4 @3E4 MAF in Kg/Hr units
+
+
+1 ||# PWM Tables
+# 1 |# hang debug: 2D4,2EA,312,2E0,308, *hangs*
+
+
+1 |# 7B4 @7B4 KAMRF1( )[divide by 256]
+1 |# 7B6 @7B6 Adaptive fuel strategy correction for bank1 - larger values ADD fuel
+1 |# 7EE @7EE filtered EVP saved in KAM
+
+1 ||####################### Analog Inputs:
+1 |# 28A7 @ and 2D29  MAF - reads AD h/w at saves to 124 = A4[R72]
+1 |# 2DC7 @ calibrate for voltage? at in var D0[R74] = 2E4
+1 |# ACT - Air Charge Temperature - raw counts? MSB in 115, degrees Farenheit in RB1
+1 |# Important functions:
+1 |# 384E @384E reads raw AD values and updates values
+1 |# 68FE @68FE timers - incr/decr Table of timer pointers
+1 |# 7BAE @7BAE trouble code (BrkPt at 7BB8 and look at R1A)
+1 |# 827D @827D 8061 CPU and RAM test routines
+1 |# 8434 @8434 change mode resets IO and starts run mode? (self test to run? )
+1 ||# Important addresses:
+1 |# 786B @786B set to zero to skip ROM checksum
+1 |# 780D @780D Key On Engine Off (KOEO) Self -Tests
+1 |# 57FC @57FC code section to retard timing if overspeed (via VSS)
+1 |# 980D @980d table (mph).
+1 |#
+1 |##############################################################################|
+
+2004 # FIXSUM to get to zero sum
+200a # Checksum Fix
+200c # End of ROM ?
+200e # I/O times between console executions (->84c2)
+2010 # HSO Port Output 2
+2012 # I/O Timer Overflow
+2014 # A/D End of Conversion
+2016 # HSI Port Input Data Available
+2018 # External Interrupt Vector
+201a # HSO Port Output  1
+201c # HSI 1 Interrupt Vector
+201e # HSI 0 Interrupt Vector
+201e ||################# 'Base + offset' (Rbase) register setup - used throughout -> Rf0 - Rfe
+2020 # no of regs
+2022 # Rf0
+2030 # Rfe
+2030 ||#############################################################
+2030 |# Master Reset Subroutine
+#32030 # Clears 0x16 to 0x489 [if b5&6 R2A unset, then POWER UP=1 (b0 Ref)
+#2030 |# bit 6 = ?
+#2030 |# input - R2A bit 5 = ?
+2030 |#############################################################
+2034 # stop interrupts
+2036 # save VIP mode
+2053 # restore VIP mode
+205c # R72,R74,R76 RAM base ptrs
+2060 ||###########################
+1 |# Initialise various locations in memory, lists start at 862a
+1 |# 3 lists linked together
+1 |# each list has an address 'base' which is added to each address entry
+1 |# update is done with an OR, which allows checking
+2060 |###########################|
+2068 # outer loop
+206c # -1 = list processing done
+206e # 'Base' address, in top byte (R1b)
+2071 # end of list (address of next list)
+2079 # get low byte of addr to init
+207c # get current contents
+207f # OR byte from list
+2082 # save new value
+2087 # Error, try again
+2089 # Address of next list
+208c ||#####################now do rest of checks|
+208e # engineering console 
+2091 # Init console if found
+2094 # verify KAM Table 1 (702-7AF)
+2097 # verify KAM Table 2 (7E4-7EC)
+209a # engine load (VE)
+209e # Averaged Load
+20a7 # Save ptr to MAF tfr func
+20af # filtered TP to start value
+20b7 # EGR Type (0=sonic, 1=PFE, 2=none)
+20be # PFE EGR is present
+20c1 # = 1.428 for 8 cyl
+20c5 # = 8 (PIPs per cycle)
+20cc # = 1.666 for 6 and 4 cyl
+20d0 # ratio for Signature PIP (cyl 1)
+20d4 # get EVP from KAM
+20e7 # default EVP if outside limits
+20eb # filtered EVP saved in KAM
+20f5 # Clear any pending HSI input data
+20fe # HSI0, HSO 1, HSO 2
+2101 # HSI line select
+210a # Drop chan 1 - No knock sensor 
+2113 # Add chan 5 - CID sensor 
+211c # Add chan 6 - VSS sensor
+211c ||######## set up HSO event to tickle console every 5mS|
+# 211f # change output in 3 state times
+2124 # Software Interrupt (ch 10) in 3 state times
+212d # not TFI controlled dwell, do SPOUT ?
+2131 # address in data Table - SPOUT(channel 5)?
+213d # High Data Rate Electronic Spark H/W 
+2141 # address in data Table - SPOUT(channel 5)?
+2148 ||#############################################################
+2148 |# EEC main (background) loop - cycles thru these routines
+2148 |# R9A ($9a) is current routine offset
+2148 |# Runs subroutines in Table starting at index 0
+2148 |## Jump here from RESET
+2148 |#############################################################
+2149 # clear all VIP mode flags
+214b # set stack pointer
+2154 # goto loopstop (DEAD) if too big
+2156 # routine num
+2159 # address of subroutine from list
+215d # push return address
+2160 # push subroutine address to stack
+216a # Reset RAM pointers every time through
+216e # next subroutine
+2171 # execute routine
+2172 # LOOPSTOP - DEAD
+2172 ||#################################################################
+2172 |# Update loop selection and restart loop
+2172 |# from task list routine at 2151, do each of 3 loops
+2172 |# LIST A - Normal Operation
+2172 |# List B - KEOE Engine off self tests (and engine on cruise controls self test? )
+2172 |# List C - KEOR Engine running self tests
+2172 |#################################################################
+2177 # Vehicle Speed Control Self Test ?
+217a # set List B
+2181 # set List C
+2185 # set List A
+2189 ||####### Tasklist Subroutine Lists
+2189 |####### List A - normal operation - no self tests
+218a # Check console, init RF0 regs
+218c # Validate/initialise KAM
+218e # Update Dwell
+2190 # Set RPM Flags
+2192 # Read AD channels
+2194 # Read/update raw AD vals
+2196 # Update WOT flag
+219a # Update heated windshield flag
+219c # Update (MPH) vehicle speed values
+219e # Update RPM?
+21a0 # Update A/C cutout and idle flags
+21a4 # Update Timers
+21a8 # Update fuel comsumption for DOL
+21ac # EVP something
+21ae # Update EGR stuff?
+21b0 # Check for RPM and Speed limiters
+21b2 # Update closed loop flags
+21b4 # Adaptive something
+21b8 # Update fuel pump enable
+21ba # EVP something - large function
+21bc # EGR stuff
+21be # Update spark advance
+21c2 # Update ect cooling fans
+21c8 # Update Canister Purge timing
+21cc # Update idle speed
+21ce # SCCS stuff checks VBAT
+21d0 # Update shift light
+21d4 # Update Air Management
+21d8 # diagnostic Self Tests
+21da # recheck list A
+21da ||################# List B - engine off self tests (and engine on cruise controls self test? )|
+21dc # check console, init RF0 regs
+21de # Set RPM Flags
+21e0 # Read AD channels to Table
+21e2 # Read/update raw AD vals
+21e4 # Update vehicle speed vals
+21e6 # Update RPM
+21ea # Update Timers
+21ee # Update EGR stuff?
+21f2 # Update fuel pump enable
+21f4 # Update Vehicle Speed Control
+21f6 # Diagnostic Self Tests
+21f8 # Update EGR stuff
+21fa # Update Canister Purge
+21fc # Recheck list B
+21fc ||######### List C - engine running self tests|
+21fe # Check console, init RF0 regs
+2200 # Read AD channels
+2202 # Read/update raw AD vals
+2204 # Update WOT flag
+2206 # Update vehicle speed values
+2208 # Update Dwell
+220a # Update RPM
+220e # Update Timers
+2212 # Update fuel comsumption for DOL
+2216 # Update EGR stuff?
+2218 # Something Injection ?
+221c # Update fuel pump enable
+221e # Ccheck idle speed?
+2220 # SCCS stuff checks VBAT
+2222 # Check HEGO sensors
+2224 # Check brake and PS flags
+2226 # Ddiagnostic Self Tests
+2228 # Update EGR stuff
+222a # Update Canister Purge
+222c # List C (rechecks List)
+222c ||#################################################################
+222c |# Save A to D values.  Definitons in Structure at 225f
+222c |#################################################################
+222e # A/D Lookup Structure
+2233 # get, and set, AD channel reqd
+2237 # exit if no more channels
+2239 # wait for AD ready
+223e # get channel returned
+2242 # check correct channel
+2245 # No, try read again
+2247 # AD Low value
+224b # AD High value
+224e # incr ptr to save address
+2253 # get destination address (hi+lo)
+2256 # save AD value to destination.
+2259 # next AD
+225e ||#############################################################
+225e |# A/D Definition.  3 byte entries
+225e |# byte 1   = A/D channel no (0-12) 
+225e |# byte 2&3 = destination address
+225e |# NB AD Ch 6 (MAF) is read and saved elsewhere, to 0x124
+225e |#############################################################
+
+225f # Throttle position sensor rate
+2262 # Voltage Calibration Level
+2265 # Voltage level (->793d)
+2268 # Open Circuit Check
+226b # Speed control system
+226e # Exhaust Gas Oxygen sensor 2
+2271 # Throttle position sensor (->794d)
+2274 # Engine Coolant Temperature
+2277 # Air charge temperature
+227a # Auto shift posn (neutral/drive) NDS
+227d # Exhaust Gas Oxygen sensor 1
+2280 # EGR Valve position
+2283 # end of Table
+2283 ||##########################
+2283 |# Table used for High Speed Output (HSO).  Called from several places
+1 |# 8 byte entries are - 
+1 |# Offset  Description
+1 |# 0,1  Subroutine call address
+1 |# 3  HSO command to send, plus bits 6&7
+1 |#    B6 = 1 Don't keep o/p state in $44   
+1 |#    B7 = 1 Do extra subroutine at [ptr+6] if set (only in $250d)   
+1 |# 4  Max count of Queued HSO events (hardware is 12 max) skip if higher
+1 |# 5  Offset for this entry into RAM table at 2C5
+1 |# 6,7  Subroutine call address
+1 |# commands entries are therefore 
+1 |# 2286  ch 9 (KTS)    ON, no int, don't keep state, call $24f9  ? don't call $6d11
+1 |# 228e  ch 9 (KTS)   OFF, int  , no ON, clear bit 9  call $250d then calls $6cd8
+1 |# 2296  ch 5 (SPOUT)  ON, no int, don't keep state, call $24f9  ? don't call $2c88
+1 |# 229e  ch 5 (SPOUT) OFF, int  , no ON, clear bit 5  call $250d then calls $2c61
+1 |############################################
+
+
+22a5 ||##################################################################
+1 |# Injector timing Table. 22 bytes per cyl (12 ON, 10 OFF ?) 
+1 |# (Offset, Size, Purpose)
+1 |# 0  subroutine call - 325a is 'Send HSO' command
+1 |# 2  ?
+1 |# 3  byte HSO (ON) command to send
+1 |# 4  byte 10  = count of or max for HSO queue ?
+1 |# 5  byte offset into 2C5 scheduling Table
+1 |# 6  byte bit mask for setting
+1 |# 7  byte bit mask for clearing
+1 |# 8  word injector cyl no (port no)
+1 |# A  word bit mask
+1 |# #######################
+1 |# C  (0) Subroutine call - 3273 is 'Send HSO' Command 
+1 |# F  (3) byte HSO (OFF) command to send
+1 |# 10 (4) byte 12 = count of or max for HSO queue ?
+1 |# 11 (5) byte offset into 2C5 scheduling Table
+1 |# 12 (6) byte bit mask for setting
+1 |# 13 (7) byte bit mask for clearing
+1 |# 14 (8) word injector cyl no (port no)
+1 ||##################################################################
+
+2356 ||##################################################################
+2356 |# called from HSOTable
+2356 |##################################################################
+
+235c ||#################################################################
+235c |# Validate KAM signature and initialize if invalid
+235c |##################################################################
+
+2364 # to check KAM signature
+2380 # KAM valid
+2382 # KAM invalid
+2385 # 700 = 0xAA
+2389 # 7b0 = 0xC6
+238d # 7e2 = 0x75
+2398 # default EVP value
+239c # Rolling avg of EPT sensor at Idle (counts)
+23a1 # Init tables at 703 and 759
+23ac # clear Idle Speed KAM IPSIBR cells
+23b7 # Clear KAM Flags (7C0)
+23bc ||###############################################################
+1 |# Send command to HSO, does actual output
+1 |# Input Parameter Registers:
+1 |# R80,1,2 = 24 bit time to fire event
+1 |# [R92 + 3] = HSO Command to send
+1 |# R92 points to one of 2284 entries
+1 |# Updates state in $44 if B6 of HSO Command is NOT set
+1 |# sends injector pulses via HSO outputs
+1 |# NOTE - this proc short cuts the caller, forcing its exit, if no queue flag is set
+1 |###############################################################|
+
+23bd # HSO command to send 
+23cb # Add Delta to master time (24 bit)
+
+23db # time until event needs to fire (24 bit)
+23de # Event time has passed - do immediately?
+23e1 # time delta > 65535 IO times
+23e7 # time < 29 uS - do immediately
+23ef # time > 2.625 mS  - skip
+23f8 # schedule command execution (via 2284/2C5 Table)
+23fd # compare to [Table+4] - count?
+2403 # jmp back to schedule a task
+2413 # HSO output overflow
+2419 # jmp back to schedule a task
+2419 ||########### Set up HSO entry in h/w
+241b # set output change time
+2420 # command to send - from R92 entry[3]
+242b # = (timelo/256) & 7
+242f # each slice is event count, in 614uS (0.6mS) slots ?
+2436 # increment relevent slice
+2453 # keep state (on or off)
+2457 # flags = $4c:4 =1 others 0
+245a # SHORT CUT, return to GRANDcaller
+245c ||##############################################################
+245c |# This proc defines a PWM ON or OFF event.
+245c |# The volatile info (time etc) are saved in the 2C5 Table in spots from
+245c |# 2284 Table  2286(ON), 228E(OFF), 2296(ON), 229E(OFF)
+245c |# R80/81/82 24 bit time for event to execute (call events execute proc)
+245c |# R92 - pointer to one of the two sides (on or off) of the event pairs in 2284 Table
+245c |# 22A6 Table is valid too (ie 22B6)
+245c |# check if this functions entry is currently scheduled
+245c |# reserved for each ROM Table entry ( ROM offset 5 points to 2C5 Table entry)
+245c |# schedule subroutine for timed execution
+245c |#
+245c |# link (2c5) first byte is status ? jmps to activate if N=1, FF = NOT  scheduled
+# 245c |# link is currently scheduled for execution
+# 245c |# unlink entry from current execution time list
+245c |##############################################################
+245d # = 2C5 RAM Table offset for this entry
+2461 # = 1st byte(link) of 2C5 entry
+2469 # FF = out of service
+246c # = link deactivated
+2471 # +5, link to next entry (OFF?)
+2477 # = link deactivated
+247c # jump if end (no next entry)
+247e # entry is valid so update link?
+247e ||### populate entry - 2284 offset and new 24 bit activation time|
+2483 # convert to Table offset
+2488 # save *ROM* OFFSET in this 2C5 Table entry [1]
+248d # save TimeLo16
+2492 # save TimeHi8
+2497 # load offset (2C5) to list head (?) from 2284 Table pointer
+249b # R8A is link from R88 entry
+24a1 # insert into list by activation time
+24a1 ||#### insert entry in 2C5 list by activation time
+24a3 # flip to other 'side' of entry ?
+24a7 # traverse link + 5
+24ad # jmp if valid 'link' to next entry - if N==0 && Z==0 then jmp to next entry
+24ad ||### end of list - insert at end of list|
+24af # save in other 'side' link?
+24b9 # convert 2C5 offset to address
+24c1 # (ROM offset? )offset 1 (0 value means time/entry not valid/active? )
+24c6 # jmp if offset link = 0
+24c6 ||### this is an active entry - compare event times|
+24c8 # execute time Lo 16 bits
+24d0 # execute time Hi 8 bits
+24d5 # if new event time is after this entry time then jump
+24d5 ||### insert in list before R8A entry|
+24e5 # index to flip side of entry
+24ed # pointer to base side of entry
+24f8 ||#############################################################
+1 |# subroutine called from $2296.
+1 |# send command from Tptr+3, then change TPtr to next entry (+8)
+1 |# and execute subroutine at [Tptr-2]  ([Tptr+6] from orig locn)
+1 |#############################################################
+
+24f9 # send HSO command and other stuff
+24fe # move to next entry
+2502 # push return address
+2508 # call subroutine from -2 of next entry
+2509 # must reschedule the event
+250b # drop through if reschedule
+250b ||#############################################################
+1 |# subroutine called from $2296.
+1 |# send command from Tptr+3,
+1 |# IF B7 Cmd SET - change TPtr to prev entry (-8)
+1 |# and execute subroutine at [Tptr-14]  ([Tptr+6] from orig locn)
+1 |#############################################################
+250d # send HSO command and other stuff
+2515 # R92 pointer to Previous entry
+2519 # push return address
+251c # get subroutine address from ON entry
+251f # call subroutine
+2520 # must reschedule event
+2522 # go to ON event execution
+2524 # processed ?
+2529 # Never gets to here !
+# 252f # jump to computed address
+2530 # schedule a routine for execution in 2284/2C5 Table
+2532 ||###########################################################
+1 |# Read HSI data
+1 |# The opening arithmetic converts the 16 bit IO TIMER (o/flow every 0.157 secs)into 24 bit value
+1 |# (with overflow every 40.2 secs). 
+1 |# R7a,b,c is the EVENT time for the HSI Interrupt
+1 |# HSI data is then processed and reqd handlers called
+1 |###########################################################
+
+2537 # time diff
+253b # add diff (24 bits)
+2541 # set event time Hi
+2544 # time diff since event (Lo)
+2548 # add propogation delay ?
+254c # corrected event time
+2550 # (24 bit)
+2553 # read HSI data
+2556 # current state
+2559 # get changed bits
+255c # mask for valid inputs
+255f # New state
+256c # handle Ign Diag Mon
+2572 # handle VSS counts
+2578 # handle CID
+257e # handle BP/MAP
+2584 # handle KNK
+258a # handle PIP
+2590 # any more events ?
+2599 # knock sensor fitted ?
+259b # No, mask int
+25a2 # CID sensor fitted ?
+25a4 # Yes, allow int
+25a7 # VSS sensor fitted ?
+25ad # Yes, allow int
+25b0 # flag extra events
+25b6 # loop back until HSI stack empty
+25b8 ||#############################################################
+25b8 |# High Speed Output Port Output Interrupt Routine
+25b8 |# Software interrupt every 1 msec
+25b8 |# Input : R91 is flags?
+25b8 |# Slice ptr is changed every 614uS? (0.6 mS) and is 0-8 (3b4-3bb)
+25b8 |# This base s/w clock int is used to drive a large Table of s/w routines
+25b8 |# This may be only for creating PWM output signals ?
+25b8 |##############################################################
+
+25bd # = 1msec at 15Mhz
+25c2 # int enabled, level low, channel 10
+25c5 # save current IO time
+25c9 # save stack pointer
+25cd # temp stack
+25d3 # HSI time/256 & 7 ?
+25d3 ||### loop around entries 0-7
+25da # New time slice ?
+25e5 # clear table entry
+25ec # cheap reset for loop 0-7
+25ef # loop back, next slice
+25f1 || ##### Code segment 33e1 to 358d executed here and returns #####| 
+
+
+#25f1 ||# this int routine sets ** LSO ** lines from R46
+#25f1 |# this int routine sets ** bidirectional IO lines from R47 (8 BITS *NOT* 2)
+25f4 # BIDI O/P line 0 to ON
+25f7 # R50 = (new ?) LSO and BIDI OP values
+2601 # write OUTPUTS
+2604 # drop bottom 3 BIDI O/Ps - why ?
+2607 # Odd address ? save bits for ?
+2607 ||#### traverse the 2C5 queue, execute subroutine for each entry whose time is up
+2607 |#### does not remove or add any queue entries
+2613 |# Init to top of loop
+
+261b # exit when 2C5[R94] == 0
+261f # map to 2284 Table entry
+2625 # valid entry
+262f # calc next entry
+263a # loop exit when R96 == 0
+2641 # loop back for next time slice
+2643 # process valid entry
+264c # update master ref time
+264f # event time for this entry
+2659 # time left to event
+2663 # -ve, time passed, do immediately
+2666 # still time left 
+266c # < 2mS to go, process it ?
+266e # skip until later ?
+2670 # late event, flag immediate
+2679 # event time > 158 uS
+267c # map to 2C5 Table pointer
+2680 # map to 2284 Table entry
+2684 # return address for call
+2689 # call subroutine from 2284 Table
+2695 # next 2C5 Table entry
+269f # back for next entry
+26bd # Prev Low Speed digital inputs?
+26c5 # read bidirectional port
+26c8 # keep bits 0 and 1
+26ce # HSI sample
+26d1 # Redundant ?
+26d5 # save HSI AND Low speed sample
+26d7 # last time HSI+ LS Sample
+26db # bits changed since last read
+26de # swop bits back ?
+26e0 # Last sample
+26e3 # compare for changes
+26e9 # HSI and LS changes
+26ec # save this sample for next time
+26f2 # IO time difference for Watchdog
+26fb # keep alive
+26fe # update wdog time
+2701 # keep the watchdog at bay
+2703 # toggle line 6 (LOS)
+2706 # no of byte locations to add up
+2709 # init sum
+270b # test for done adding
+270e # move sum to RCF
+2711 # exit loop
+2713 # add 9 bytes of ? save to ?
+271a # IO timer overflow pending?
+271d # allow only IO timer OVF interrupts
+2720 # restore saved stack pointer
+2727 # safety delay ?
+272a ||#############################################################
+272a |## High Speed Input # 0 Interrupt Routine (read HSI data)
+272a |#############################################################
+272f # save stack pointer
+2733 # temp stack pointer
+2739 # read HSI data if avail
+273b # restore old stack ptr and return
+273b ||#############################################################
+273b |# Master I/O Timer Overflow Interrupt Routine
+273b |# neatly uses overflow to increment 32 bit counter.
+273b |#############################################################
+273e # increment I/O Timer overflow
+2742 # flag Tmr overflow
+2748 # save 32 bit time
+274c # reset int mask
+
+#32750 ||#############################################################
+#32750 |# A/D End of Conversion Interrupt Routine
+#2750 |# External Interrupt Routine
+#2750 |# High Speed Input # 1 Interrupt Routine
+#2750 |# High Speed Input Port Input Data Available Routine
+#2750 |# Ignored interrupts linked to 2750
+
+
+
+2750 ||#############################################################
+1 |# Software Interrupt Handler ?
+1 |# Reset S/W interrupt every 5 ms, (2083 IOTimer ticks = 5 mS)
+1 |# and check Cal Console status and enter [console] routine if required
+1 |# effectively gives console a timeslice every 5mS
+1 |#############################################################
+2754 # THIS interrupt time
+2759 # zero means set no more SW ints
+275f # interrupt earlier than time requested
+2765 # remember int overflow ? 
+2768 # skip creating new int
+276a # Next s/w interrupt in 5 Ms
+2770 # avoid zero which means s/w ints are off
+2772 # save NEXT s/w int time
+2779 # set new software interrupt
+277c # CONSOLE STATUS check
+2781 # Console address ? IO time for next console call
+278c # exit if no console
+2798 # if time has passed ?
+279e # console entry ?
+
+27a5 ||##############################################################
+1 |# Reschedule (or start) software interrupt
+1 |# sets next software interrupt 5 millisecs after time in $298
+1 |# Ignores if HSO overflow
+1 |############################################################### |
+
+27a9 # time of last s/w int
+27ad # last int + 5msec
+27b3 # avoid zero
+27b5 # save NEXT time
+27bc # set interrupt
+27bf # clear ints overflowed flag ?
+27c2 ||###############################################################
+1 |# Table 4,6,8 cyls - used at 3E5D lookup for $3c2.  Minimum PIP period for cyl 1 marker ?
+1 |###############################################################
+
+
+
+27c8 ||###############################################################
+1 |# handle HSI line 0 data (PIP)
+1 |# R7a,b,c = last HSI event time 24 bits
+1 |# R50,1,2 = time delta (time since last PIP event)
+
+27c8 |###############################################################
+
+27ca # read MAF (AD ch 6)
+27cd # clear Pip flag
+27d0 # min PIP time to update RPM ?
+27d9 # new PIP time in 24 bits
+27e3 ||##### PIP High handler (Initialise if $2d:4 = 1)
+1 |##### Initialise the 8 entry RAM table (2c5) from InjTab table (22a6) 
+
+27eb # Base of Table
+27f3 # done - exit loop
+27f5 # index into 2C5 Table (-3 ?)
+27f9 # 24 bit PIP event time
+2803 # next InjTab entry (22 bytes)
+2807 # end of init loop
+2809 ||##### PIP High handler (Run)
+2815 # time too small - ignore it
+#281c # PIP occurred after 50 msec
+2823 # CID sensor present ?
+2825 # AE fuel - sync = 1, async = 0. Init to 0
+283a # Previous PIP period
+283e # new PIP period 24 bits
+2841 # period = time since last PIP Hi
+2848 # High Data Rate Electronic Spark Present ?
+284d # PIP time hi 8 bits
+2852 # PIP time lo 16 bits
+2858 # Sequential (1) or simultaneous (2) inject
+2862 # PIP HSI event time lo 16 bits
+2866 # PIP HSI event time hi 8 bits
+286f # No of steps to Ramp Fuel, unitless
+2875 # No of steps to Ramp Fuel, unitless
+287d # No of PIPs which have occurred
+28a1 # High Data Rate Electronic Spark present ?
+28a4 # wait for A -D complete
+28a7 # mask out channel no
+28ae # save (raw MAF counts ?) 124
+28c7 # routine in 2284 Table
+28d1 # Underspeed Flag
+28e1 # send HSO command and other stuff R92=2296
+2918 ||######## PIP Low handler ####### 
+2929 # PIP Elapsed time
+292c # half (for equal Hi/Lo)
+2933 # PIP hi-lo time delta (Pulsewidth)
+2936 ||###### skip this section for narrow blade (cyl 1) if CID fitted,
+1 |####### because then don't need to do all this work...|
+293a # No Cyl ID sensor 
+2942 # = PIP Hi-Hi time/2 - Pip Hi-lo time
+2946 # should be zero at steady state
+294a # top byte PIPHi-Hi/Pip Hi-Lo
+
+2951 # 9e68 is 20% of 65536
+2953 # This is Cyl 1 - narrow blade/slot
+295e # OK - cyl 1 expected do/keep SYNC 
+2981 # 9aac = 256
+2989 # 9aa8 = 256
+299b # UNSYNC  
+299b |#### end of narrow blade processing|
+29ab # Spout Off command ?
+29bc # send HSO command and other stuff
+29c2 # Spout On command ?
+29cd ||########################################################
+1 |# handle CID (cylinder ident) Interrupt  - sync to cyl no 1
+1 |# $d1 (byte) is incremented by 32 (->2898) in PIPHi handler, so wraps 
+1 |# each 8 sparks.  $d1 = 0 for cyl 1. Compares with 9aa8
+1 |# are done as byte AND word, so the 256 word value is probably a flag marker
+1 |# for newly synched ?  The 128 use may show that CID changes state at cyl 4,
+1 |# which would be a state switch for each crank revolution ?
+1 |########################################################
+29d7 ||####### CID High handler #####|
+29de # = 128
+29e4 # not = 128
+29e6 UNSYNC cyls, set 128 for next rev & return
+
+29f0 ||####### CID Low handler #####
+29f6 # UNSYNC if underspeed
+29ff # not = 0 so UNSYNC cyls & return
+2a03 # OK - SYNC Cyl no 
+2a06 # 9aac = 256 
+2a0e # 9aa8 = 256
+
+2a14 |#######################################################
+2a14 |# Vehicle Speed sensor counts
+2a14 |# handle VSS
+2a14 |#######################################################
+
+2a15 # masked input line data
+2a18 # rising edge only
+2a1b # count of VSS ring clicks
+2a1d # timer - time since last click
+2a24 # set interval start
+2a27 # clear click count
+2a2d # save event time 32 bit 
+2a31 ||#######################################################
+2a31 |# data, first 3 entries are cyl/spark angle degrees (*4) = 180,120,90
+2a31 |# last 3 entries are also ratio 1, 1.5, 2 
+2a31 |# matching 4,6,8 cyls - delay time for bank fired injection ?
+2a31 |#######################################################
+
+2a3c ||#################################
+1 |# start with R50 = pip counter.  KNKCYL =4
+1 |# If R50 > 4, Decrement R50 until it equals 4.
+1 |# if R50 < 4 then return unchanged Why go to all this trouble with a loop ?
+1 |#################################
+
+
+2a5a # SparkAdvance[ cyl 1 -8 ]
+2a64 # Max degrees retard
+2a6e # SparkAdvance[ cyl 1 -8 ]
+2a92 # tip in retard max = 0
+2a96 # Throttle position
+2a9f # (degrees)
+2ab7 # SparkAdvance[ cyl 1 -8 ]
+2acc # Lower limit spark clip
+2ada # Upper limit spark clip
+2b22 # Spark Angle Pulse Width, msec.
+2b34 # or no of PIPs per engine revolution
+2b3d # PIP time lo 16 bits
+2b4e # or no of PIPs per engine revolution
+2b76 # Max allowed advance in spark timing between spout outputs
+2b89 # PIP time lo 16 bits
+2ba6 # Min RPM to enable transient spark routine
+
+2baf # Hysteresis for TRSRPM
+
+2bc0 # MAF input range error?
+2bcd # PIP time lo 16 bits
+2c34 # 27E+5C=02DA = 2C5 -15 right in the middle of our Table
+2c52 # odd 2284 Table offset
+2c5c # jump with existing return
+2c61 ||# 22a0 proc - save zero flag in 2C5 entry or add PIP & ? time to R80/81/82
+2c88 # 2284 entry proc 
+2c91 # 0 = TFI Controlled Dwell
+2caa # Slope for PIP acceleration
+2cc8 # Limit of PIP acceleration
+2cf9 # Dwell Switch point
+2cff # max low speed dwell
+2d0c # max high speed dwell
+2d28 ||################################################################
+2d29 # wait for A -D complete
+2d2c # mask off low bits
+2d33 # save Raw MAF A/D reading
+2d44 # MAF calibrate/lookup 
+2d88 # Manifold filling - slow filter
+2d8c # Fraction - slow vs fast filter
+2d92 # Manifold filling - fast filter
+2dc6 ||################################################################
+1 |# MAF/calibrate/lookup in transfer function
+1 |# This seems to use its own code for func lookup for some reason
+2dc6 |#######################################################################
+2dcb # Scale raw MAF value
+2dcf # Scale via Batt Ref Voltage
+2dd5 # clamp max MAF voltage
+2dd8 # save value
+2ddc # MAF transfer function pointer
+2de0 # Table max MAF voltage
+2de5 # shortcut if max value/Air flow
+2de9 # end Table look up
+2ded # back up in MAF transfer function Table to the right value
+2df4 # loop
+2df8 # jmp ahead in the MAF transfer function to the right value
+2dff # loop
+2e05 # interpolate larger MAF
+2e08 # larger air flow
+2e0b # MAF difference
+2e0e # MAF delta to interpolate
+2e11 # air flow difference
+2e1a # interpolated air flow
+2e21 # Save last MAF tfr func ptr - for speed?
+2e25 # old MAF value
+2e29 # MAF not in Kg/Hr
+2e2f # add old and new MAF values
+2e36 # avg/2
+2e45 # Running Total ?
+
+2e5a |##########################################################
+2e5b # start port = 0
+2ed3 # Injector Pulse Width 
+2f06 # which edge for fuel pulse
+2f1f # 180 = 4 cyl
+2f37 # PIPs per engine revolution
+2f9c # sequential (=1) or simultaneous (=2) injections
+2fc1 || ########## something to do with injection and no of cyls called from 2f3b
+2fc2 # 4 cyl
+2fc4 # 6 cyl
+2fc6 # 8 cyl
+3006 # 8 - no of cyls
+300e # R52 is cyl sequence ?
+3013 # Load Injector firing order
+3018 # ROM ptr to injector to fire from sequence no
+301b # R50 is cyl no
+301e # Injector Output Port
+3023 # Ptr to port from cyl no
+3026 # port to fire (0 or 2)
+302c # test port - jmp on port = 0
+303e # 8 - no of cyls
+30d0 # injector firing order ?
+30d5 # not self test
+30d5 ||########### get cyl no (in R54)
+30ef # entry no - 1
+30f2 # 2284 Table cell for cyl
+30f6 # convert cell to table pointer
+30fa # =91B8, Injector Output Port
+30ff # load port from cyl no
+3104 # PulseWidth? - port 0 or 2
+312a # set time for this injector to fire
+3141 # 8 - no of cyls
+3147 # wrap cyl count
+3149 # what does this do?
+3158 # watchdog and LOS reset
+317f # Not called ?
+318a # 2C5 Table ?
+3199 ||######################################################################
+3199 |# Bank Injection (unsynced fuel) setup ?
+3199 |######################################################################
+
+319a # R50 is scyl no ?
+319e # Injector Output Port(Inj port vs cyl)
+31a3 # add cylno
+31a6 # load port (0 or 2) from ROM Table
+31a9 # jmp if port == 0 (not 2)
+31ac # change port 2 into 1
+31ae # Table indexed by port 0 or 1
+31b5 # PIP time lo 16 bits
+31b8 # R50 = R50 * 8192
+31c3 ||######################################################################
+31c3 | Cyl Injection (synced fuel) setup ?
+31c3 |######################################################################
+3212 # schedule event time 
+3227 # Add for execution in 2284/2C5 Table
+325a # send HSO cmd and other stuff
+32cc ||######################################################################
+32cc | Fuel addition for trip computer ? unsynced 
+32cc |#########################################################
+32cf # Cyl No ?
+32d3 # Injector Output Port Table
+32db # load port 0 or 2 for this cyl
+32f7 # Save time
+32fb # Inj Pulse Width ms, R50 - port 0 or 2
+333d ||######################################################################
+333d | Fuel addition for trip computer ? synced 
+333d |#########################################################
+
+
+3347 # 8 - no of cyls
+3369 # entry for a cyl no?
+336d # Injector Output Port Table
+3372 # pointer to the bank for entry R92 cyl ?
+3375 # bank to fire for this cyl
+337b # Table? pulse width for port 0 (port 2 $208)
+339c # schedule event time 
+33dd # Add for execution in 2284/2C5 Table
+33e0 ||################################################################
+33e0 |# update low speed controls - EGR, MIL/STO output, SCCS, CP, Idle Speed(ISC)
+1 |# STATIC JUMP from 25f1 (not called as subr) and jumps back to 25f4, so is really part of
+1 |# 'HSO Int1' High speed interrupt handler 
+1 |################################################################
+33e1 # get AD chan 6 (MAF)
+33e4 # EGR vac regulator OFF
+33ea # EGR stuff done
+3406 # EGR vacuum regulator ON
+3413 ||#### Idle speed control ### |
+3417 # ISC OFF (bypass air)
+341a # ISC Duty Cycle ?
+3420 # IFREQ - $b8/256
+3425 # -ve, set to min ?
+3428 # ISC ON
+342d # No ISC reqd ?
+342d ||### DOL update ###|
+3437 # Toggle DOL state
+3449 # block PIP interrupts ?
+344f # jump past STO stuff
+3457 # Allow PIP interrupts ?
+345a # STO shift count (leftmost 1 bit at start)
+345e # loop if bits left to output
+3464 # Self Test Output trigger set - to turn off STO
+3469 # Time difference
+3470 # Update 24 bit master reference time
+3473 # Hi 8 bits of current time
+347d # current master time - RDA(STO time)
+3481 # R56 = STO time - current time (hi bytes)
+348a # jump if time remaining till STO > 3 mS
+348a ||### very close to STO bit time end|
+348c # set HSO time
+3490 # set HSO chan 10 off + interrupt
+3493 # IO time for each trouble code bit at selected output speed
+3497 # IO time for each trouble code bit at selected output speed
+349b # STO high 8 bits time
+349f # set bit 0 of RD8 flag STO HOLDOFF (time to change to next bit? )
+349f ||#### still shifting out error codes|
+34a4 # bits remaining to be output
+34a8 # STO SHIFT - shifted trouble code
+34ac # next output bit? RIGHT SHIFT? SB left shift
+34af # set STO hi/lo based on R52 bit 0
+34af ||# handle STO/MIL lamp trouble codes output
+34b1 # jump over STO if Self Test Output trigger clr
+34b4 # bit to output is set 
+34b4 ||##### OFF bit |
+34b7 # R52 = 0 - set STO off
+34bc # R52 = 1 - set STO on
+34c1 # R52 = 0 - set STO off
+34c3 # clear STO on and OFF flags
+34c6 # jmp to set STO line hi/lo
+34c6 ||###### ON bit |
+34c8 # clear RD6 bit 5 STO CODE
+34cb # set RD6 bit 3 working
+34ce # Self Test Trouble code
+34d1 # 16 bit trouble code?
+34d7 ||##### strip off leading zero bits in trouble code RD4|
+34da # RD4 << 1 next bit of trouble code
+34dd # leftmost 1 bit just shifted out
+34df # decr 16 bit count of left most 1 bit
+34e2 # 'backup' to leftmost one bit
+34e4 # trouble code bit position (bit position of first != 0 bit)
+34e4 ||##### select MIL lamp interval time in R50 and R54|
+34ec # STO 'slow', 0x32dcd=0.5 secs
+34f6 # STO 'fast', 0x823=5 millisecs
+34ff # STO 'hyper', 0x341=2 millisecs
+3501 # master time diff in R84
+350f # STO timer value 
+350f ||######### compute time to change STO|
+3513 # time for this next bit (lo 16)
+351a # hi 8 time for this next bit
+351e # allow next bit to queue up
+3521 # MIL ON
+3524 # trouble code flg
+3527 # MIL OFF
+352a # STO bit set for R52 time
+353a # no PIP interrupt pending?
+353e ||##### Speed control system (SCCS) #####|
+3541 # SCCS Count
+354b # Speed Control Vacuum Off
+354e # Speed Control Vent On
+3557 # SCCS vacuum active
+355a # TOGGLE Speed Control Vacuum
+355f # TOGGLE Speed Control Vent
+356d # Loop back
+356d ||##### canister purge timing (CP) #####|
+356f # output line 1 OFF (canister purge)
+3572 # 12B canister purge start period
+3577 # 12D canister purge on time
+357d # 12E canister purge period
+3583 # 12B canister purge start period
+3587 # canister purge enabled clear
+358a # output line 1 ON (canister purge)
+358d ||########################################################
+358d |# handle HSI line 2 - BAP sensor
+358d |########################################################
+3593 # time of last read
+3598 # delta time since last BP read
+359c # update last time read
+35a5 # why not just incb directly ?
+35a8 # new BP calc reqd ?
+35ab ||########################################################
+35ab |# Byte function lookup with interpolate 
+35ab |# handles all 4 combinations of signed and unsigned in/out values
+35ab |# IN R32 func address
+35ab |# IN R34 input value
+35ab |# OUT R38 = func(R34) as byte
+35ab |########################################################|
+35ac # signed input, unsigned output
+35b1 # signed input, signed output
+35b4 # unsigned input, signed output
+35b7 # unsigned input, unsigned output
+35bb # Signed input
+35ca # Use below for result
+35cd # Get values above and below i/p val
+35e3 # Negative - remember
+35f0 # Negative, fix sign
+35f5 # add interpolated delta
+35fd # cleanup
+3600 ||#############################################################
+3600 |# Word function lookup - as byte logic (but word instructions)
+3600 |# IN R32 func address
+3600 |# IN R34 input value
+3600 |# OUT R38 = func(R34) as word
+3600 |#############################################################
+3653 ||#############################################################
+1 |# Filter (rolling average) routine - signed and unsigned options
+1 |# 3654 loads 3 params into R32, 34, 36
+1 |# 365e loads 1 param  into R36
+1 |# 3663 loads 0 params
+1 |# inputs R32 old, R34 New, R36 filter factor (rate)
+1 |# output in R3e
+3653 |#############################################################
+
+3656 # OLD sensor value
+365b # NEW sensor value
+3660 # filter value
+3663 # R36 = R3E * 65536 / (R36 + R3E)
+3665 # flag as signed
+366a # R36 = R3E * 65536 / (R36 + R3E)
+366c # flag as unsigned
+366e # difference (new -old)
+3672 # jump if signed 
+3675 # effectively +ve result (unsigned)
+3677 # effectively -ve result (unsigned)
+3679 # jmp if difference is NOT negative
+367b # set bit 0 - neg result flag ?
+367d # reverse diff, so ABS (diff)
+367f # ABS(diff ) * R36(filter factor)
+3682 # neg scaled diff Hi 16 bits
+3684 # jmp if scaled diff > 0000FFFF
+3686 # neg scaled diff LO 16 bits
+3688 # jmp - scaled diff is ZERO
+368a # any fraction to next whole num
+368c # negative flag
+3691 # add filtered diff to old AD value (in R3E)
+
+3694 ||#############################################################
+1 |# Get a caller's WORD param and increment return address
+1 |# can be called more than once (see above)
+1 |# If positive, returned as is.
+1 |# If top bit set, map to ROM.  All calls in this bin are D0nn
+1 |# which maps to [f8] + nn as word address to look up 
+1 |# Range used is D040 (at 5400) to D060 (at 410c) which gives actual 
+1 |# ROM addresses of 97E8-9808
+1 |# return R3c with lookup ADDRESS 
+3694 |#############################################################
+3695 # This subroutine's return addr
+3697 # Caller subroutine's return addr
+369c # 3C = Word param from caller
+369f # restore caller address (+2)
+36a1 # restore this return address
+36a3 # return unchanged if top bit clear
+36a6 # = f0 register offset (R3c top byte)
+36a9 # clear reg offset (top nibble) 
+36ac # top nibble down 3 (reg offset * 2) 
+36af # force even for register offset
+36b2 # return  (param & fff)+[e0+x*2]
+36b7 ||##############################################################
+1 |# Rolling Average/smoothing Filter calc
+1 |# R36 = Timer * 65536 / (R36 + Timer)
+   #R36 = (r3e*65536)/(r36+R3e) = r3e/(R36+R3e) * 65536 = 1 + r3e/r36
+1 |# Aspinput flag uses preset value for timer which is
+1 |# used only for AM (airflow) filtering,
+1 |#  otherwise uses background timer as base param 
+1 |# outputs:
+1 |## routine scale filtering difference by factor
+1 |#############################################################
+36bb # Background Loop Timer
+36c4 # divisor + timer
+36c9 # clip to max FF
+36d1 # clip to max on overflow?
+36d7 ||#############################################################
+36d7 |# Table lookup with 3 way interpolate (2 vars X and Y) Signed and unsigned
+1    |# R30 = X value. (column)   'whole' in top byte (R31), fraction in lower (R30)
+1    |# R32 = Y value  (row       'whole' in top byte (R33), fraction in lower (R32)
+#36d7 |# R30 is parameter A
+#36d7 |# R32 is parameter B
+36d7 |# R34 is Table width (no of columns)
+36d7 |# R38 is the Table pointer
+36d7 |# result in R3B
+36d7 |#############################################################
+36d8 # Signed scaled Table (not used)
+36db # scale up by 16
+36dd # Byte param A * 16
+36e2 # Byte param B * 16
+
+36e7 # Signed Table
+36ea # Unsigned Table
+
+371e ||#############################################################
+1 |# single dimension interpolate - signed or unsigned
+1 |#############################################################
+3722 # SIGNED interpolate calc
+373c # UNSIGNED interpolate calc
+374e ||#############################################################
+1 |# Timer checks against list address supplied in R30.
+1 |# Result is carry set/clr.  Looks like (timed) enabler check for several functions
+1 |# Closed loop, EVP, CANP etc
+1 |#############################################################
+
+3785 ||#################################################################
+3785 |# Set RPM Flags mode - cranking, underspeed. run etc
+3785 |#################################################################
+
+3790 # (225 RPM) 
+3799 # ECTCNT <=8 ?
+37a1 # RPM>225, ECTCNT<=8, PIPCNT>8, clear CRANKING
+37a6 # RPM > 255
+37ab # set underspeed and exit
+37ad # cranking flag not set
+37b5 # RPM < 50
+37c1 # set cranking and other flags
+37c6 # cranking not set, RPM >= 50
+37cf # RPM < 200, Underspeed limit low, set underspeed
+37d1 # R30 = 300RPM
+37d8 # RPM < 300, Underspeed limit high, exit
+37df # RPM > 300 clear underspeed if set 
+37eb # set underspeed if necessary
+37ee # Underspeed transition
+37f2 ||#################################################################
+37f2 |# Update Throttle flags (RAA is Throttle position)
+37f2 |#################################################################
+37fa # Min+delta
+37ff # Min>=delta, clr WOT
+3804 # TP <= max,  clr WOT
+3806 # hysterysis?
+380f # TP > RATCH + DELTA + HYSTS
+3811 # Closed Throttle ?
+
+381a # WOT breakpoint (TPS voltage - 1)
+382e # set WOT
+384d ||#################################################################
+384d |# Read Analog to Digital channels new state
+384d |#################################################################
+
+3857 # jmp to ACT test
+3857 ||#### update EVP
+3859 # skip EVP update
+385c # default EVP
+3860 # filtered EVP saved in KAM
+3868 # go to ACT test
+386a # use 128 as ACT
+386d # raw EVP 116
+387d # OK, use as new value
+387f # go to ACT test
+3881 # Default EVP ? 128
+3885 ||#### update ACT
+3889 # skip ACT test
+389c # AD to degrees F
+38a1 # input for ACT calc (addr= 115)
+38a7 # R38 is our new ACT
+38a7 ||#### ACT sensor is BAD
+38a9 # do NOT use ECT as new ACT ?
+38af # use ECT as ACT
+38b1 # do NOT set ACT from ROM ?
+38b4 # Default ACT ?
+38b8 ||##### update ACT
+38cd # BAD sensor
+38cf # AD to degrees F
+38d4 # Input for ECT calc  (addr=113)
+38da ||###### invalid ECT sensor reading
+38dc # use ACT for ECT ?
+
+38f9 # Default ECT value from ROM ? (75 deg ?)
+38fe # previous Engine Coolant Temp - degrees F ?
+3901 # new ECT value to filter and save
+3904 # R38 = R38 * 256
+3907 # filter factor
+390b # FILTER (factor times difference added back)
+390d # Filterd Engine Coolant Temperature
+3910 # Counts up after h/w reset
+3914 # TKYON2 - compare whole seconds
+3918 # jump timer <= ROM time
+
+3921 # jmp time <= 8 secs?
+3923 # div by 8
+3929 # incr putimer
+392b ||#### update TP|
+392f # TP sensor has failed ?
+393c ||#### TP is out of range|
+
+
+394e # range error
+3950 # TP sensor has failed ?
+395b # Change in TP if not at idle (as indicated by AM) To permit Part Throttle operation
+3962 # default value
+
+3965 ||################# update TAR - Throttle position sensor rate|
+3968 # min rate?
+396c # read raw TAR sensor 120
+3972 # clamp to zero
+397b # round up
+397f # TAR scaled and translated? 29E
+397f ||############################## update BP
+
+399b # filter R35 as new TP
+399d # Never gets here !
+399f # time of last BP pulse ?
+39ae # Faulty BAP?
+39bd # BP counts
+39c0 # time of last BP read
+39c4 # reset count to zero
+39c6 # disallow odd BP counts
+39d4 # BP count == zero?
+39d6 # Time of last BP read - R18 is delta time?
+39e0 # convert counts to freq by dividing by time
+39eb # = 106666667/freq
+39ee # Table 8C78 - conversion to atmo
+39f6 # round up to save byte vs word
+39fa # save BP 12F
+39fe # time of last BP calc
+3a09 # new AD sensor value 
+3a0b # Old AD sensor value, filtered BP
+3a0f # filter new/old AD input
+3a14 # filtered BP
+3a18 # BP - barometric pressure 1FE
+3a23 # time of last BP read/calc
+3a23 ||##### update MAF|
+3a35 # max MAF count
+3a3c # min MAF count
+3a41 # range OK
+3a43 # MAF count out of range error
+3a46 # bad MAF sensor retry interval (3)
+3a4a # set bad MAF retry interval
+3a4a |# valid MAF sensor reading
+3a51 # counts since last bad MAF read
+3a57 # decr bad MAF read count but clamp to zero
+3a68 # clr MAF input range error?
+3a6b # jmp if MAF out of range error
+3a6b |# MAF sensor read is bad - calc air mass by speed density
+
+3a92 # spark RPM scaling
+3aa7 # clamp to zero (throttle closing? )
+3aa9 # Normalized delta TP, used for MAF sensor failure Table lookup.
+3afe |# Update NDS and ACC (multiplexed inputs)
+3b0d # last raw AD NDS/A3C
+3b1c # A/C cycling control switch is open
+3b3e # A/C cycling control switch is closed
+3b44 # save last NDS/A3C
+3b48 # Transmission Load switch
+3b4f # 1 = Drive.
+3b52 # Manual Trans, no clutch or gear switches, forced neutral state (NDSFLG = 0).
+3b5a # 1 = Drive.
+3b63 # time since Neutral/Drive Switch State change, sec.
+3b65 # Manual Transmission, both clutch and gear switches.
+3b6d # 1 = Drive.
+3b70 # Drive Neutral select.
+3b75 # 1 = Drive.
+3b7d # time since Neutral/Drive Switch State change, sec.
+3b82 # clr  Drive Neutral select.
+3b8a # OUTPUT = Seconds.
+3b92 # time since Neutral/Drive Switch State change, sec.
+3b97 # set Drive/Neutral Select.
+3b9a # clear Power Steering Flag.
+
+3ba2 || ###### CHECK EGOs - handle cross, rich to lean, or lean to rich
+3ba2 | ## check EGO 1|
+3ba3 # Mixture cross flag EGO1
+3baa # Trip Voltage
+3bae # 4.17v = Rich
+3bb0 # jump if already rich (No Cross)
+3bb3 # Set Mixture Rich
+3bb8 # jump if already lean
+3bbb # mixture is lean
+
+3bbe # Set CROSS flag
+3bc1 # sensor 1
+
+3bc5 || ## check EGO 2  (same but different flags)|
+
+
+
+3be1 # CROSS FLAG
+3be4 # sensor 2
+3be7 ||#### Update Brake On / Off (A/C ? )|
+
+3bec # BIHP Brake Input H/w Present
+3bf0 # jmp if not A/C or BOO sensor input
+3bf2 # jmp if not BOO HIGH
+3bf5 # Brake is on.
+
+3bfb # HSI bit 3 is STI - Self Test Input - on the fly test
+
+3bfe ||###############################################################################
+3bfe |# KeyPower may be read thru a 20k and 4.35K voltage divider yielding 17.86% of battery voltage to AD input
+3bfe |# Update VCAL/KEYPWR
+3bfe |# VCAL is 2.5Volts giving an AD reading of 7FE0 
+3bfe |# a 14V battery thru the divider gives a 2.5V AD input
+3bfe |# resulting battery voltage level is times 16
+3bfe |############################################################################### 
+
+3c05 # R34L = 28000000
+3c0b # chk for div by zero (VCAL regulator is bad)
+3c10 # 28000000/VCAL = 5014 without voltage error
+3c15 # VCAL default 
+3c15 ||# validate VCAL range|
+3c27 # clamp range err
+3c27 ||# normalize KEYPWR voltage|
+3c2b # = B32C (gives 380BBF70 w/o voltage err)
+3c2f # hi 16 bits of 32 bit result
+3c32 # raw KEYPWR (17.86% of bat voltage)(result is VBat * 2)(result Hi SB 1BFE w/o errs)
+3c36 # check max voltage in top 16 of 32 bit result (~15.94V)
+3c3a # clamp voltage
+3c3c # now volts * 16
+3c41 # max voltage
+3c41 ||# filter battery voltage level|
+3c44 # OLD AD sensor value Lo = 211 - Battery Voltage Level
+3c48 # NEW AD sensor value Lo
+3c4b # filter new AD input - battery voltage
+3c4e # filter factors (lookup in ROM)
+3c50 # updated AD value = 211 - Battery Voltage Level * 16
+3c57 # Table injector offset vs battery volts
+3c7f # scale and translated TAR
+3c8d # engine load (VE? )
+3cce ||###################################################################
+3cce |# Count the no of times switched between rich and lean (of stiochoimetric)
+3cce |# 2A4 - total crosses
+3cce |# 2A5 - EGO1 crosses
+3cce |# 2A6 - EGO2 crosses
+3cce |### DO THIS ON CROSS. R42 CONTAINS EGO NUMERB - EITHER 1 OR 2
+3cce |###################################################################
+3ccf # Increment CROSS COUNT by BANK
+3cd3 # INCREMENT CROSS COUNTER
+3cdc # clamp max to FF
+3ce3 ||#################################################################
+3ce3 |# Update (MPH) vehicle speed values
+3ce3 |# get sample interval time end and click count
+3ce3 |# see routine 2A15 for click count
+3ce3 |# 02AC = filtered MPH
+3ce3 |# 02B2 = unfiltered MPH
+3ce3 |# 02BC = filtered MPH
+3ce3 |# Tasklist Routine at 2151, routine offset 12
+3ce3 |#################################################################
+3ce6 # (VSS)
+3ce9 # IO time for HSI going 'high'
+3cf1 # VSS speed ring clicks
+3cf1 |# start new sample interval
+3cf6 # time since last click
+3cff # timed out, clear and reset
+3cff |# check for any click count
+3d04 # no clicks?
+3d07 # jmp if valid sample
+3d09 # NEW MPH = last MPH
+3d09 |# calc time per speed ring click
+3d0f # time hi 8 bits
+3d12 # time since start of this RB2 click count (24 bits)
+3d1b # = time per VSS click
+3d20 ||# calc MPH - 96000000/2.4 = 40000000.  4000 clicks per mile ?
+3d23 # = 96000000 
+3d2b # 96M / R14(time per click) = distance per time (MPH? )
+3d33 # NEW (unfiltered) MPH
+3d37 # IOTIme of this sample (24 bits)
+3d48 # Filtered vehicle speed (1)
+3d55 # Filtered vehicle speed (2)
+
+3d59 ||#################################################################
+3d59 |# Update heated windshield flag - check for some frequency input
+3d59 |# Tasklist Routine at 2151, routine offset 10
+3d59 |#################################################################
+3d5a # A3C flag
+3d5e # subtract from last state
+3d63 # no state change
+3d65 # last state = current state
+3d75 # 250mS
+3d83 # 300mS
+3d85 # defrost already on ?
+3d88 # jmp if HWFLGL - first time
+3d8e # set first time defrost on
+3d99 # jmp if A3C - is AC on?
+
+3d9f || ############# RPM calc tables ###################################
+1 |# first list is top word, second is bottom word of 32 bit variable
+1 |# used below, where  rpm*4 = value/PIP interval  (in IOtimer ticks)
+1 |##################################################################
+3da6 # = 2faf080 = 50,000,000 4 cyl
+3da8 # = 1fca055 = 33,333,333 6 cyl
+3daa # = 17d7840 = 25,000,000 8 cyl
+3daa ||#################################################################
+1 |# Update RPM variables - filtering as required and other stuff
+1 |# 0x108 ($108) RPM with filter 1
+1 |# 0x27C ($27c) RPM with filter 2
+1 |# Tasklist Routine at 2151, routine offset 14
+1 |# RAE is raw RPM ( engine RPM * 4 )
+1 |#################################################################
+3db0 # time since last PIP recieved ?
+3db6 # RPM = 0?
+3dd1 # short entry 2284 - spout?
+3dd8 # send HSO command 55 ands lots of other stuff - spout?
+3de4 # 2nd short entry 2284 - spout?
+3deb # send HSO command C5 ands lots of other stuff - spout?
+3dfb # Hi word from table
+3e00 # Lo word from table
+3e05 # PIP time Lo 
+3e08 # Pip time Hi (byte)
+3e0b # normalize time value (R38Long)
+3e0e # divide. (val/pip time = RPM)
+3e11 # engine RPM is in bottom bits of LONG shift
+3e13 # new RPM
+3e16 # RAE = RPM * 4
+3e42 # = 256
+3e49 # R32 = 16
+
+3e4d # 8 - no of cyls
+3e51 # piplim = 4
+3e59 # R14 is index (0,2,4)=(4,6,8 cyls)
+3e5d # 27C4 [4] = 3200
+3e61 # sim min = 3200
+3e67 # Min PIP Period
+3e6a # Min PIP dly = 961
+3e6d # = 13107  20% of 65536
+3e7b ||#################################################################
+3e7b |# Tasklist Routine at 2151, routine offset 20
+3e7b |#################################################################
+3ea7 # spark RPM scaling
+3eb5 # emission load scaling
+3eba # raw engine load (= VE? )
+3ecd # Air Meter Backflow Correction Table
+3ed9 # Table 9204 ? vs RPM
+3f0e # =Closed TP
+3f69 # = 66
+3f7d # = 9A
+4011 # = 0
+4025 # = A0
+404b # EGR Mass Flow
+4057 # clamp max to FFFF
+4063 |# engine displacement = 1B4A = 6986 - engine displacement (unit = 0.0430981 Cubic Inches)#|
+406c # clamp max to FFFF
+406f # SET engine load
+406f ||# speed density VE calc? RPM*BP/#00EF = ?  #|
+
+4082 # BP * fs(RPM)
+408b # clamp max to FFFF
+4096 # never jumps ?
+409d # div by 2
+40a0 # air flow / (RPM * CID) = VE (=Load)
+40a5 # clamp max to FFFF
+40a8 # Volumetric Efficiency (=Load)
+40b5 # Save filtered Load
+40b9 ||#################################################################
+40b9 |# Update EGR stuff?
+40b9 |# Tasklist Routine at 2151, routine offset 24
+40b9 |#################################################################
+40ba # PFE EGR Present
+
+40c9 # save result
+40d6 # 166
+
+
+40f5 # Save result
+40fc # filtered result EVP 2
+4101 # filtered result EVP 1
+
+4115 # Store result
+
+412c # Save result
+4130 # RPM <= 450 RPM ?
+413c # update to smaller Min TP Closed position
+4140 ||#################################################################
+1 |# Check for RPM and Speed limiters
+1 |# Tasklist Routine at 2151, routine offset 26
+1 |# RPM values here are RPM * 4
+1 |# Overspeed RPM, sets stage 3 fuel limiter
+####1 |NB - THESE ARE NOT STOCK REV LIMITS !ROM checksum error cause!
+1 |#################################################################
+4141 # = 0x9a82 = 8000 rpm
+414b # > 8000 rpm - Half fuel ON
+414e # = 0x9a84 = 7500 RPM 
+4153 # < 7500 rpm - Half fuel OFF
+415a # tracking vehcle speed ? = 1
+4163 # vehicle speed filtered(1)
+4167 # Speed Limiter A = FF ON
+416a # jmp if speed < FF (ALWAYS)
+416f # Speed Limiter A = FF OFF
+4172 # jmp if speed < FF
+4177 # Speed Limiter B = FF ON
+417a # jump if speed <= ROM limit
+417f # Speed Limiter B = FF OFF
+4182 # jmp if speed >= ROM limit
+4196 # 1 = High speed alternate fuel/spark
+4199 # 1 = fire alternate injectors
+41a0 ||#################################################################
+41a0 |# Update closed loop flags
+41a0 |# Update warm EGO flags
+41a0 |# Tasklist Routine at 2151, routine offset 28
+41a0 |#################################################################
+
+41aa # 260 Volumetric Efficiency
+41b0 # set LDFlag
+41b5 # 260 Volumetric Efficiency
+41bb # clr LDFlag
+41be # LDFlag
+41c1 # WOT flag?
+41c4 # Engine Temp 254 degrees F ?
+41ca # Engine Temp 220 degrees F ?
+
+41da # jmp if not WMEGOL
+41f3 # EGOCL1 = 1
+41ff # open loop min load(min load for OL control)
+4203 # engine load (VE? )
+420e # min load for closed loop
+4214 # engine load (VE? )
+421d # Table 9CAC
+
+4233 # Upper LOAD Limit for Closed Loop Fuel Control,unitless
+4245 # open loop tp Voltage (throttle position to force open loop (TPS voltage - 1))
+4259 # Hysteresis term to enter WOT mode
+4298 # High load timer - 1/8 seconds under high load so far
+429c # time at high load to force Open loop(seconds)
+42ab # 1 = closed loop control mode
+42b6 # set open loop
+42bd # ENPIP1 = 1
+42c1 # ENPIP2 = 1
+42e4 # no of HEGOs
+4307 # Desired fuel ratio for the left side bank
+430b # Desired fuel ratio for the right side bank
+4365 ||########|
+4366 # emission rpm scaling
+
+4374 # load scaling
+4379 # engine load (VE? )
+438c # HEGO BIAS
+4394 # computed HEGO bias?
+43ad # Closed Loop Peak-to-Peak amplitude, lambdas.
+
+43c1 # time delay from when fuel change made until the EGO sensor sees it
+
+4439 # 20A - LAMBSE1( )[divide by 32768]
+444f # clamp overflow
+4452 # clamp R34 Lambda to ROM limits (19.0:1 to 10.98:1)
+4454 # 20A - LAMBSE1( )[divide by 32768]
+44a8 # 20A - LAMBSE1( )[divide by 32768]
+44be # clamp overflow
+44c1 # clamp R34 Lambda to ROM limits (19.0:1 to 10.98:1)
+44c3 # 20A - LAMBSE1( )[divide by 32768]
+44fd |# clamp R34 Lambda to ROM limits
+44fd ||######|
+44fe # LAMMAX (A/F ratio 19.0:1)
+4508 # LAMMIN (A/F ratio 10.98:1)
+4512 ||######|
+4513 # 20A - LAMBSE1( )[divide by 32768]
+4526 # 20A - LAMBSE1( )[divide by 32768]
+452b ||######|
+452c # used for Table lookup
+
+4545 # 260 Volumetric Efficiency
+4552 # Base Fuel (A/F ratio) (ECT vs load)
+455a # Open Loop Fuel Multiplier vs ACT
+455f # RB1 = ACT (ACT = RB1 * 4)
+458e # Startup Fuel (A/F ratio)(ECT vs Time)
+45ae # Sea Level Lugging O/L Fuel Multiplier vs RPM
+45c1 # barometric pressure
+45cb # Altitude Lugging O/L Fuel Multiplier vs RPM
+45f2 # fuel closed throttle open loop multiply
+
+4631 # Table spark RPM scaling
+
+463f # Table 9016
+4644 # 260 Volumetric Efficiency
+
+4654 # Manage Fuel Air Fuel Table, 10 x 8 Table of multipliers as a function of engine speed N and LOAD
+
+4678 # selects which "WOT Fuel Multiplier vs RPM" Table to use
+467b # WOT Fuel Multiplier vs RPM 1
+4685 # WOT Fuel Multiplier vs RPM 2
+
+469e # LAMBSE modifier?
+46af # fuel open loop multiplier (LAMBSE)
+46c0 # high speed flag?
+46c3 # Table (vehicle speed - LAMBSE)
+46c8 # vehicle speed filtered(1) (MPH) 2BC is 8.8 format VSS
+46df # Desired fuel ratio for the left side bank of injectors
+46e3 # Desired fuel ratio for the right side bank of injectors
+46e7 ||#################################################################
+46e7 |# temp something?
+46e7 |#################################################################
+46e8 # RB1 = ACT (ACT = RB1 * 4)
+
+46ff ||#################################################################
+46ff |# Adaptive something
+46ff |# Tasklist Routine at 2151, routine offset 2A
+46ff |#################################################################
+
+4703 # Run/Underspeed Flag. (1 = Underspeed or CRANK, 0 = Run)
+4706 # ? ROM 9AE2=55
+470a # jump if ECT < 170 degrees Farenheit
+470c #  ROM 9AE3=71
+4710 # jump if ECT > 226 degrees Farenheit
+4712 # set Adaptive Fuel Time Flag
+4715 |############## not at operating temp(too hot or cold)
+471b # Adaptive Fuel Time Flag
+4745 # the column no of the Adaptive Learning Cell to be updated
+4769 # ECC Load Scaling - emission load scaling
+476e # engine load (VE? )
+
+478a # Table  spark RPM scaling
+
+
+47a3 # Adaptive Learning Cell to be updated
+47af # Adaptive Learning Cell to be updated
+4803 # min act for adaptive control
+4809 # max act for adaptive control
+483e # computed HEGO bias
+486d # KAM index = 0
+4877 # KAM Table[R3E] write something?
+4884 # KAM index = 1
+4893 # KAM Table[R3E] write something?
+4896 ||################################################################
+4896 |# R3E = ? error?
+4896 |################################################################
+48a2 # 20A - LAMBSE1( )[divide by 32768]
+48ac # KAM - read value from KAM Table
+48b3 # KAM - write value back to KAM Table
+48b8 # 9E00 - read index ROM Table value
+48ce # ROM adaptive control min
+48d9 # KAM Table store
+48de # KAM checksum
+48e3 # update KAM cksum and return
+48ed # 20A - LAMBSE1( )[divide by 32768]
+48f5 # return
+48f7 # KAM - read indexed KAM value
+48fc # incr value
+48fe # KAM - store back into KAM loc
+4903 # 9E00
+490b # pull value from ROM Table
+490e # byte << 1 (times 2)
+4919 # adaptive control max
+4924 # KAM - store value into same loc as above
+4929 # KAM checksum
+492e # incr cksum to match incr to value
+4930 # KAM checksum
+
+495f # KAM Table 1 Lo byte of ?
+4964 # KAM Table 2 Hi byte of ?
+496b # spark RPM scaling
+
+4979 # ECC Load Scaling - emission load scaling
+497e # engine load (VE? )
+4993 # KAM Table 1 Lo byte of ?
+4998 # KAM Table 2 Hi byte of ?
+49a1 # KAM Table 1 Lo byte of ?
+49a6 # KAM Table 2 Hi byte of ?
+49bd # KAM Table 1 Lo byte of ?
+49c2 # KAM Table 2 Hi byte of ?
+49cb # KAM Table 1 Lo byte of ?
+49d0 # KAM Table 2 Hi byte of ?
+4a17 # jmp if the no of HEGOs != 1
+4a17 |# One HEGO case
+4a1e |# Two HEGO case (zero hegos? )
+4a86 ||################################################################
+
+4ab5 # no of cyls (8)
+4ad6 ||#################################################################
+4ad6 |# Tasklist Routine at 2151, routine offset 2C - calc injector pulse width?
+4ad6 |#################################################################
+
+4adf # Cranking Fuel Pulse Width vs ECT
+4aea # barometric pressure
+4afa # injector pulse width?
+4afd # fuel crank pw multiply time
+4b0d # R3CL * 4 and clamped
+4b0f # injector slope low
+4b1f # R3CL * 4 and clamped
+4b3b # Desired fuel ratio for the left bank
+4b47 # Desired fuel ratio for the right bank
+4b58 ||#################################################################
+4b58 |# Tasklist Routine at 2151, routine offset 8E Fall thru?
+4b58 |#################################################################
+4b6e # MAF input range error?
+4b8e # Table 989E
+4bb0 # set flags effecting 7XXX ad reads ?
+4bd4 # Table 922C
+4bd9 # Battery Voltage Level * 16
+4be9 # injector slope low
+4bf7 # injector slope high
+4bf7 |# mult R3C long times 4 and clam max to FFFF -FFFF
+4cbd # clamp max R3F to 3FFF
+4cc9 ||#################################################################
+4cc9 |# Tasklist Routine at 2151, routine offset 1E
+4cc9 |# update fuel comsumption for DOL
+4cc9 |#################################################################
+4cca # Fuel Sum High
+4cd0 # No of injectors fired by each output port.
+4cf8 # add to Data Output Link Count
+4cfc ||##########################################################
+4d08 # 9ABD - NITMR3 - ATMR1 timed delay to enter Closed Loop fuel after Hot start, sec. Range of 0 to 255 sec., accuracy 1 sec.
+4d30 # spark RPM scaling
+
+4d41 # injector time load scaling
+4d46 # engine load (VE? )
+4d53 # Injector Timing (crank degrees)(RPM vs Load)
+4d67 # injector delay global = 0
+4d85 # Save filtered sensor output
+4d8e # engine load (VE? )
+4da2 # engine load (VE? )
+
+4e10 # min rpm decel fuel shutoff
+4e3e # engine load (VE? )
+4e56 # Decel fuel low load timer enabled flag, 1 = Count up timer.
+4e6c # Open Loop Fuel Multiplier vs RPM
+
+4e83 # min ect decel fuel shutoff (140.0DegF)
+
+4ef3 ||#################################################################
+4ef3 |# Tasklist Routine at 2151, routine offset E
+4ef3 |#################################################################
+
+4efb # scale and translated TAR
+4f08 # engine load (VE? )
+4f18 # Table 8C9E fuel tp scaling
+4f1d # scale and translated TAR
+4f27 # Table 8CA8 fuel XX scaling (what is XX?)
+4f3f # accel pump rate - (Deg/sec vs ECT)
+4f4a # Accelerator Enrichment Multiplier vs TP
+4f4f # RAA is Throttle position - 126 - RATCH=Closed TP
+4f61 # BP - barometric pressure
+4f65 # Table 90A6
+4f75 # accel pump multiplier
+
+
+4fa4 # Table 8CD2
+
+4fb9 # Table 8CFA load scaling
+4fbe # engine load (VE? )
+4fd4 # Table 9D38
+4fea # Table 9CE8
+50ed ||#################################################################
+1 |# Tasklist Routine at 2151, routine offset 2E
+1 |# Update fuel pump enable. Skip if flag set.
+1 |# turn pump off if more than 1 sec elapsed since last PIP occurred
+50ed |#################################################################
+50f9 # 1024 = 1 second
+5102 ||#################################################################
+
+510c # Table 97C7
+5116 # WOT flag
+5128 # compare to raw EVP AD value
+5135 ||#################################################################
+5135 |# Tasklist Routine at 2151, routine offset 30
+5135 |# EVP something 
+5135 |#################################################################
+5136 # 97D9 EGR Type contents = 00 - egr type ( 0=sonic, 1=PFE, 2=none)
+513a # jmp if sonic or no EGR
+513d # PFEHP FLG - sonic h/w present from calibration data
+5140 # jmp if EGR = none or sonic
+5143 # BG POINT
+5146 # 288 EM - EGR Mass Flow = zero
+514a # 16E - EGRACT - Actual EGR percent = 100*EM/AMPEM.
+5155 # PFEHP FLG - sonic h/w present from calibration data
+515b # Table 98B0 - BP correction for exhaust backpressure calculation, "Hg
+5160 # BP - barometric pressure
+5167 # 1FF - BPCOR - BP corrected
+516b # KAMRF1 - Adaptive Fuel strategy correction factor. It is composed of the value LTMTB1rc + .5
+5170 # RA2 = AM -> Air mass flow, (lb/min)
+517e # Table 98BA - Upstream pressure as a function of (AM * KAMREF). (KAMREF = Adaptive fuel correction factor), "H20.
+518a # 1FF - BPCOR - BP corrected
+519e # 104 - EPTBAR - Rolling average of the synchronously sampled EPT sensor (time constant = TCEPT), secs
+51a5 # filtered EVP saved in KAM
+51b0 # 97D4 - XFREPT - Transfer function of EPT sensor, " H20/counts
+51cc # 176 - DELPR - Pressure drop across the control orifice, " H20 = PE - DP
+51d0 # Table 995E - EGR mass flow as a function of DELPR, lb/min.
+51d8 # BP - barometric pressure
+51ee # 288 EM - EGR Mass Flow
+51fc # 157 - ISCFLG - ISC MODE Flag (1 = RPM CONTROL Mode)
+5205 # 20E - DELOPT - Filtered desired EGR valve position.
+520b # 170 - EVP - EGR valve position reading in A/D counts.
+520f # 128 - EOFF - The EGR valve reading when the valve is fully closed in A/D counts
+5217 # Table 9904 - EGR mass flow as a function of EGR valve position (EVP -EOFF).
+5222 # BP - barometric pressure
+522e # 288 EM - EGR Mass Flow
+5232 # 288 EM - EGR Mass Flow
+524c # old AD sensor value - EGRACT - Actual EGR percent = 100*EM/AMPEM.
+5250 # save new over old value 16E - EGRACT - Actual EGR percent = 100*EM/AMPEM.
+5256 # PFEHP FLG - sonic h/w present from calibration data
+
+525e # filtered sensor output - EGRACT - Actual EGR percent = 100*EM/AMPEM.
+5267 # EGRMPT - Calibration time delay to ramp EGR in, secs.
+526b # 9E5F - CTLOW - Temperature of Engine Coolant at Cold Startup, deg F.
+5274 # set TSEGRE FLG -
+5277 # 264 timer TSEGRE - Accumulated time EGR is enabled.
+527d # clr TSEGRE FLG -
+5280 # set 264 timer TSEGRE
+5284 # PFEHP FLG - sonic h/w present from calibration data
+5287 # EGREN - Flag which indicates EGR enabled
+528a # 16F - EGRATE - Desired EGR rate in percent
+528e # 20E - DELOPT - Filtered desired EGR valve position.
+52ac # Table 8CDE Engine speed N normalizing function
+52ba # Input = LOAD and Output = Normalized load
+52bf # engine load (VE? )
+52d2 # Table 99AE - Sea level EGR Table.
+52dd # 201 - MULT BP212A - ?
+52f0 # Table 99FE - Altitude EGR Table.
+52fb # Table 98F8 - EGRALT multiplier as a function of Barometric Pressure BP.
+5300 # BP - barometric pressure
+530f # Table 98E2 - Multiplier as a function of ECT.
+
+531d # Table 991C - Multiplier as a function of Air Charge Temperature ACT.
+5322 # RB1 = ACT (ACT = RB1 * 4)
+5333 # 97CD X EGR Table multplier.
+533a # 264 TSEGRE - Accumulated time EGR is enabled (sec)
+5340 # 97D2 - EGRMPT - Calibration time delay to ramp EGR in, sec.
+534e # MFAFLG - Managed Fuel Air State flag, set to 1 if MFA is being used.
+5354 # generates Table entry point. Input = N and Output = Normalized N.
+
+
+5362 # generates Table entry point. Input = LOAD and Output = Normalized Load.
+5367 # engine load (VE? )
+
+5374 # Table 9A4E - Managed fuel Air EGR Table. X -input = FN083 - Normalized Engine Speed, RPM Y -input = FN082 - Normalized load. Output = Multiplier.
+53d1 # BP - barometric pressure
+53da # Table 9926
+
+5400 # FILTER old, new, factor
+5409 # check result
+540f # clamp value if nec.
+5413 # save filtered output
+545b # Table 9986
+
+5467 # BP - barometric pressure
+5484 # orig value
+548f # filtered value
+549e # filtered EVP saved in KAM
+54bc # 288 EM - EGR Mass Flow
+54cc # 104 - EPTBAR
+54d0 # 17C - CONPR
+54d4 # 174 - DESDP
+54d8 ||#################################################################
+54d8 |# Tasklist Routine at 2151, routine offset 32
+54d8 |# EGR stuff
+54d8 |#################################################################
+54d9 # PFE HP flag
+54dc # 20E - DELOPT
+54e2 # 97D0 - EGRDED
+54e6 # 128 - EOFF
+54ef # 170 - EVP
+54f5 # jmp if EGRFLG
+54f8 # 97CE - DCOFF
+5519 # Table 9942
+
+5521 # EGRDC
+5536 # clr EGRFLG
+5584 ||#################################################################
+5584 |# Tasklist Routine at 2151, routine offset 6E
+5584 |# Fall thru ?
+5584 |# Update EGR stuff
+5584 ||#################################################################|
+5595 # Never gets here ?
+55c2 ||#################################################################
+55c2 |# Tasklist Routine at 2151, routine offset 34
+55c2 |# Update spark advance
+55c2 |#################################################################
+
+55d3 # Table 8CDE spark RPM scaling
+
+55e1 # Table 8CFA load scaling
+55e6 # engine load (VE? )
+55f2 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+
+560e # Table 96C0 - Torque Reduction Table (auto trans protection)
+561e # Table Closed Throttle Spark advance (added, ECT->adv)
+
+562c # Table 94AC - Closed Throttle Base spark advance (RPM->adv)
+
+563a # 9032 spark adder closed throttle
+
+
+5659 # Table 9568 Time since startup kicker time delay, sec. Input is TCSTRT, max repetition 6.
+5669 # Table 94CE (BP is input)
+566e # BP - barometric pressure
+5687 # Table 954E Idle Spark subtractor, deg.
+56a1 # check WOT flag
+56a4 # Table 9504 - WOT spark advance vs RPM
+
+56b2 # Table 9528 - Spark Advance vs. BP
+56b7 # BP - barometric pressure
+56c3 # Table 9532 - WOT Spark Advance vs ECT
+56c8 # INPUT: Engine Coolant Temp
+56ce # OUTPUT: ECT advance increment
+56d3 # Table 9540 - WOT Spark Advance vs ACT
+56d8 # RB1 = ACT (ACT = RB1 * 4)
+56e3 # 943A spark adder WOT
+56ea # done
+56f5 # Table 95C4 - Altitude Base spark (RPM vs LOAD)
+5712 # Table 9614 - limp mode spark timing Table (Deg BTDC)(RPM vs LOAD)
+571d # Table 94F8 LOMALT Table multiplier as a function of Barometric Pressure, BP.(0 at sea level 1.0 at 'high' altitude
+5722 # BP - barometric pressure
+5739 # Table 9574 - base spark timing Table (Deg BTDC)(RPM vs LOAD)
+5769 # X -input = Normalized engine speed on RPM - FN070, Y -input = Normalized LOAD - FN071, Output = Spark advance adder for EGR, deg per 1 percent EGR.
+577e # generates Table entry point. Input = N and Output = Normalized N.
+
+578c # generates Table entry point. Input = LOAD and Output = Normalized Load.
+5791 # engine load (VE? )
+579e # Table 96B4 - Spark adv from engine speed N and LOAD.
+57b8 # Table 9488 ECT normalizing function.
+
+57cc # Table 9710 (ECT,LOAD) = Part throttle spark modifier Table. X -input = Normalized ECT (FN033) Y -input = Normalized LOAD (FN071).
+57da # Spark advance
+57df # RB1 = ACT (ACT = RB1 * 4)
+57f4 # 9434 spark adder for part throttle
+
+57f4 ||# Code section to retard timing if overspeed (via VSS) with Table $980d (mph).|
+
+57f9 # If overspeed
+57fc # Table 980D High Speed Spark retard, mph.
+5801 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+5808 # retard spark
+5827 # Table 94DA LOM Load function to activate LOM spark strategy. Input: RPM and Output: load.
+
+
+5851 ||#################################################################
+1 |# Tasklist Routine at 2151, routine offset 4
+1 |# Update Dwell - skip subr entirely if TFI Controlled Dwell
+1 |#################################################################
+5858 # Weighting factor for ECT and ACT on Base Dwell
+5862 # Min low speed dwell
+586d # Min high speed dwell
+5872 # Battery Voltage Level * 16
+5879 # Base amount of DWELL
+587d # convert to IOtime ticks ?
+58af ||#################################################################
+58af |# Tasklist Routine at 2151, routine offset 42
+58af |# Idle Speed controls
+58af |#################################################################
+
+58b0 # Ignore if disable flag set
+58b8 # Dashpot hysteresis
+58bf # clamp value to max of FF
+58bf |# R40 = 11 defined by ROM
+#58c6 # 17 <= MPH
+#58cc # 13 < MPH
+
+58e3 # time since last PIP recieved
+58e7 # 8 seconds
+58ed # isc duty cycle during crank
+
+
+590e # ISCDTY - ROM 9AFA FCAMSW
+5926 # jump if normal strategy - not self test mode
+592d # Idle Speed in neutral = 672rpm
+593f # Table 90C4
+594d # Table 90D4
+5952 # RB1 = ACT (ACT = RB1 * 4)
+5962 # Table 955A
+
+5984 # Table 92C0
+5992 # jump if heated windshield not on
+599f # Idle Speed in neutral = 672rpm
+59ce # filtered DESNLO
+
+5a01 # check if in neutral or in gear ( in ROM! = 3 )Maybe this is manual vs automatic
+5a09 # F4 = 8FD6 so 74+8FD6 = 904A = Idle Speed in neutral (0054H = 84 and 84 * 8 = 672rpm
+
+
+5a46 # time since entering 'running' mode
+5a8e # Table 9AFC
+5a93 #  time since entering 'running' mode
+5aa0 # Table 9366 - (ECT,ATMR3) = Airflow multiplier vs. ECT and ATMR3
+5b38 # RAA is Throttle position
+5b52 # dashpot decrement rate (dashpot decrement step at given flow(Kg/Hr(flow),Kg/Hr(Step))
+5b7a # 126 - RATCH=Closed TP
+5b91 # Table 9346 Max Dashpot clip Dashpot clip(lbs/min) vs RPM
+
+
+5bd0 # jump if normal strategy - not self test mode
+5bda # 9E5C
+5bea # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+
+5c07 # 146 = $146
+
+
+5c24 # zero $146
+5c2e # Table 92CE
+5c59 # engine load (VE? )
+
+5c63 # zero 146 timer - ISCTMR
+5cce # Table 9286
+
+5d05 # Table 92F2
+5d0c # Table 92D6
+
+5d2b # zero $146 timer?
+5d36 # Table 930E
+
+
+5d62 # jump if normal strategy - not self test mode
+5d6b # 29F - N byte
+5d6f # Table 92B2
+5d7d # jump if normal strategy - not self test mode
+5dc1 # jump if normal strategy - not self test mode
+5df9 # BP - barometric pressure
+5e00 # 9030 - DEBYCP ?
+5e06 # 9030 - DEBYCP ?
+5e0a # 9030 - DEBYCP ?
+5e10 # 9030 - DEBYCP ?
+5e18 # Table 9256
+5e27 # jump if running self tests
+5e2a # engine load (VE? )
+5e2e # Table 929A Crank Pulse Width Multiplier vs time in crank mode
+5e53 # 146 timer - ISCTMR
+5e6c # 16B - ISFlag - index of some sort?
+5e70 # index to word offset
+5e78 # 9047 - UPDATM
+5e81 # 160 - IBGPSI
+5e85 # KAM Table 2 checksum
+5e8f # 902C - PSIBRN
+5e97 # CkSum
+5e99 # 902A - PSIBR M
+5ea3 # 902A - PSIBR M
+5eab # CkSum
+5ead # 902C - PSIBRN
+5eb5 # ISCKAMOL
+5eba # 154 IPSIBR
+5ebe # KAM Table 2 checksum ISKSUM
+5ec3 ||#################################################################
+5ec3 |# Tasklist Routine at 2151, routine offset 44
+5ec3 |# SCCS stuff checks VBAT
+5ec3 |#################################################################
+
+5ec7 # 8EA0 SCCS Frequency - Desired VSC Frequency, Hz
+5ecd # 211 Battery Voltage Level * 16
+5ed1 # 8E9E = 26(38)HLDRNG - Error deadband for no pulses required.
+5ed5 # jmp battery voltage > ROM limit
+5ed5 |# Battery voltage insufficient
+5ed7 # SCCS force OFF BUTTON only
+5eda # SCCS state clear all
+5eda |# Battery voltage is OK
+5ede # Update Vehicle Speed Control(VSC)SCCS
+5ee6 ||#################################################################
+5ee6 |# Tasklist Routine at 2151, routine offset 6A
+5ee6 |# Read Cruise control buttons (SCCS)
+5ee6 |# Update Vehicle Speed Control(VSC)
+5ee6 |# set VSC bits in RB5 & RA0 based on ABS voltage **CHANGE** on AD channel 4 (SCCS)
+5ee6 |#################################################################
+
+5ee7 # AD channel 4 118 Cruise control buttons - Vehicle Speed Control Command Switch
+5eeb # difference to old value of buttons
+5ef2 # ABS difference
+5ef4 # 8E6C - Min change in IVSCCS to reset the debounce timer
+5efa # 3AC IVSCCS LST - Previous valid SCCS input
+5efe # 8E8A - DEBTIM - Debounce time delay, seconds
+5f02 # 2A8 timer? DEBOUNCE timer
+5f06 # zero 2A8 timer? DEBOUNCE timer
+5f0c # input, debounced counts
+5f14 # check for SCCS error
+5f17 # 8E6E - HI OFF - Input VSC command Switch input range, counts
+5f1d # set RB5 bit 7 OFF BUTTON
+5f21 # 8E70 - LOW ON - Input VSCCS input range, counts.
+5f27 # set RA0 bit 7 ON STATE
+5f2b # 8E72 - LCOAST - Input VSCCS input range, counts.
+5f31 # 8E74 - HCOAST - Input VSCCS input range, counts.
+5f37 # set RB5 bit 5 COAST BUTTON
+5f3b # 8E76 - LACCEL - Input VSCCS input range, counts.
+5f41 # 8E78 - HACCEL - Input VSCCS input range, counts.
+5f47 # set RB5 bit 4 ACCELORATE BUTTON
+5f4b # 8E7A - LRESUM - Input VSCCS input range, counts.
+5f51 # 8E7C - HRESUM - Input VSCCS input range, counts.
+5f57 # set RB5 bit 3 RESUME BUTTON
+5f5b # 8E7E - LOHOLD - Input VSCCS input range, counts.
+5f61 # 8E80 - HIHOLD - Input VSCCS input range, counts.
+5f67 # clr all bits in RB5
+5f6a # set RB5 bit 1 button voltage range error
+5f6d # clr RA0 bit 7 clr ON state
+5f70 ||################################################################
+5f71 # jump if not VIP mode flag : VSCDT
+
+5f77 # x4
+5f7a # SCCS vehicle speed in MPH filtered 2
+5f7e # SCCS vehicle speed in MPH filtered 2
+5f82 # SCCS on state
+5f85 # SCCS OFF buttob
+5f8f # jump if VIP mode flag : VSCDT
+5fac # SCCS Button voltage range error
+
+5fe2 # BIFLG = If equal to 1, Brake is on.
+5fe5 # BIFLG = If equal to 1, Brake is on.
+5feb # 9E5C
+5ff4 # ck SCCS buttons: RESUME, COAST, ACCELL
+5ffa # set SCCS button Range error
+5ffe # SCCS COAST button
+6015 # SCCS ACCEL button
+6039 # SCCS RESUME button
+6087 # SCCS ACCEL button
+60a8 # jump if not VIP mode flag : VSCDT
+60cf # jump if not VIP mode flag : VSCDT
+6109 # SCCS vehicle speed in MPH filtered 2
+6112 # RAA is Throttle position, 126 - RATCH=Closed TP
+614c # set 2BB - timer?
+6178 # LSO output line 0 OFF (Speed Control Vacuum)
+617b # LSO output line 4 ON (Speed Control Vent)
+6190 ||#################################################################
+6190 |# Tasklist Routine at 2151, routine offset 3A
+6190 |#################################################################
+
+619e # RB1 = ACT (ACT = RB1 * 4)
+
+61bf # RB1 = ACT (ACT = RB1 * 4)
+61d0 # 9E70 no of HEGOs
+61e6 # timer?
+61ef # 9E65 thermactor present switch = 1.0
+6207 # clr bits 6, 2, 1, 0
+620d # R47 bit 4 OFF (Air Management 2)
+6210 # R47 bit 3 OFF (Air Management 1)
+6222 # engine load (VE? )
+622d # engine load (VE? )
+623c # 93B6
+624c # R47 bit 4 OFF (Air Management 2)
+624f # R47 bit 3 OFF (Air Management 1)
+6254 # 93CE
+
+6269 # timer?
+6272 # 138 timer?
+627f # 137 timer?
+6292 # RCE timer?
+629b # timer?
+62a3 # R47 bit 4 OFF (Air Management 2)
+62ae # R47 bit 4 ON (Air Management 2)
+62b1 # R47 bit 3 ON (Air Management 1)
+62b4 ||#################################################################
+62b4 |# Tasklist Routine at 2151, routine offset 3C
+62b4 |#################################################################
+
+62b5 # 93E1 - ECADHP
+62b9 # return if h/w not present
+62bb # ROM 93E2 - ECADECT
+62c1 # set ECADQ1
+62c6 # ROM 93E5 - EDETHYS
+62cc # clr ECADQ1
+62cf # 29F - N BYTE
+62d3 # 93E3 - ECADN
+62d9 # set ECADQ2
+62de # 93E6 - EDNHYS
+62e4 # clr ECADQ2
+62e7 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+62eb # 93E4 - ECADVS
+62f1 # set ECADQ3
+62f6 # 93E7 - EDVSHYS
+62fc # clr ECADQ3
+6305 # 9E65 thermactor present switch = 1.0
+630c # jmp if no Thermactor present
+630e # jmp if not USAFLG
+6311 # 93E8 - EDTM3
+6320 # jmp if not ECADI
+6323 # jmp if not ECADQ1
+6326 # jmp if not ECADQ2
+6329 # jmp if not ECADQ3
+632c # R47 bit 6 OFF (Fan)HI FAN
+6331 # R47 bit 6 ON (Fan)HI FAN
+6334 ||#################################################################
+6334 |# Tasklist Routine at 2151, routine offset 3E
+6334 |# Update Canister Purge timing
+6334 |#################################################################
+6350 # 93F6 - Canister purge hot startup delay time.
+635f # timer?
+636e # Table 9A72 - Canister Purge Duty Cycle vs. AM, X -input = AM, Y -output = Purge Duty Cycle.
+638c # Table 9A5A - Canister Purge Duty Cycle Multiplier, X -input = PRGTMR. Y -output = Duty Cycle Multiplier.
+6391 # 149 - timer Canister Purge Timer - cannister purge accumulation time in seconds
+639e # Table 9A66 - Canister Purge Duty Cycle Multiplier, X -input = CPRGTMR, Y -output = Duty Cycle Multiplier.
+63a3 # 14A - timer?
+63ba # zero 14A - timer - Current Purge on time.
+63c7 ||#################################################################
+63c7 |# Tasklist Routine at 2151, routine offset 70 Fall thru?
+63c7 |# Update Canister Purge
+63c7 |################################################################# |
+
+63cd # 12E - PURGE PERIOD
+63d1 # 12C - PURGDC - Canister Purge Duty Cycle.
+63d8 # 12D - PURG ON TIME
+63dc ||#################################################################
+63dc |# Tasklist Routine at 2151, routine offset 16
+63dc |# Update A/C cutout and idle slowdown flag
+63dc |#################################################################
+
+
+
+
+6411 # jmp if A/C is off
+6428 # BIFLG = If equal to 1, Brake is on.
+642b # 213 - A/C Clutch Brake Timer (sec)
+6437 # 215 - A/C Clutch WOT Cutout Timer (sec)
+6448 # 216 - A/C CLUTCH TRANSITION TIMER
+644e # LSO output line 6 setting bit turns ON relay which turns AC OFF
+645d # 3A8 timer?
+6467 # 216 - A/C CLUTCH TRANSITION TIMER
+6474 # 218 - A/C CLUTCH TURN -ON DELAY TIMER (msec resolution)
+647a # LSO output line 6 clearing bit turns OFF relay which turns AC ON
+6485 # jmp if ACCFLG
+6488 # set ACIFLG - A/C engagement impending flag:1=A/C about to engage - adjust airflow and fuel immediately
+648b ||#################################################################
+648b |# Tasklist Routine at 2151, routine offset 38
+648b |# update ect cooling fans
+648b |#################################################################
+
+648c # 941C fan control enable
+649b #  ROM 941F fan high speed temp 2(242DegF)
+64a1 #  ROM 941E fan high speed temp 1(234DegF)
+64b1 # engine load (VE? )
+64bb # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+64cf # timer?
+64d8 # 941E fan high speed temp 1(234DegF)
+
+64e8 #  ROM 9414 fan low speed temp (220DegF)
+64f1 # 9414 fan low speed temp (220DegF)
+
+6504 # 941D fan high speed enable
+6515 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+6526 # R47 bits 5 and 6 OFF (Fans? )
+6531 # 216 - timer?
+653d # 215 timer?
+6547 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+6551 # R47 bit 5 OFF (Fan? )
+6554 # R47 bit 6 ON (Fan? )
+655f # R47 bit 5 ON (Fan? )
+6562 # R47 bit 6 OFF (Fan? )
+6565 ||#################################################################
+6565 |# Tasklist Routine at 2151, routine offset 40
+6565 |#################################################################
+
+656d # thermactor present must be 2 
+657c # 126 - RATCH=Closed TP
+6586 # RAA is Throttle position
+658b # R47 bit 3 ON (Air management1)
+6598 # RAA is Throttle position
+659d # R47 bit 3 OFF (Air management1)
+65a0 ||#################################################################
+65a0 |# Tasklist Routine at 2151, routine offset 4A
+65a0 |# Update Air Management
+65a0 |#################################################################
+
+65a1 # 9E65 thermactor present switch = 1.0
+65aa # 8E68 - NIAC
+
+65b3 # set IACFLG
+65b8 # 8E6A - NIACH
+
+65c5 # clr IACFLG
+65cb # R47 bit 4 OFF (Air management2)
+65d0 # R47 bit 4 ON (Air management2)
+65d3 ||#################################################################
+65d3 |# Tasklist Routine at 2151, routine offset 18
+65d3 |#################################################################
+
+65d7 # STI input line low timer
+65de # Cranking, clear timers
+65fc # Not cranking, but closed Throttle
+6609 # Not crank, not closed Throttle
+6613 # At Wide Open Throttle ?
+6623 # part throttle ?
+
+6634 # RC9 is some kind of timer
+6636 # if R47 bit 5 OFF (Fan? )
+6639 # zero 14E - timer
+666a # FILTER 955A
+
+66ca # 260 Volumetric Efficiency
+66e6 # zero 137 timer?
+66f5 # 8FD8
+66ff # WOT flag
+6711 # 027c - filtered(2) RPM
+6736 # BP - barometric pressure
+674f # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+67b4 # BP - barometric pressure
+67c8 # 2BD - vehicle speed filtered(1) (MPH) 2BC is 8.8 format
+67ce # zero RCE timer?
+67fe # High load timer - 1/8 seconds under high load so far
+6810 # zero timer?
+6822 # zero timer?
+6826 # timer?
+6833 # timer?
+6863 # zero 216 - timer?
+686a # 126 - RATCH=Closed TP
+6873 # RAA is Throttle position
+687f # RAA is Throttle position
+688a # zero 214 - timer?
+6890 # 214 - timer?
+689b # set 214 - timer?
+689f # RAA is Throttle position
+68a7 # Table 9056
+68af # 214 - timer?
+68b5 # zero 215 timer?
+68bc # zero 220 timer?
+68e6 # zero 138 timer?
+68f2 # zero 14F timer?
+68f9 # zero 218 - timer?
+68fd ||#################################################################
+1 |# Update Timers
+1 |# see timer table below this subroutine.
+1 |# routine has 1 mS (1/1204) resolution.
+1 |# keeps remainders of IOTIMER so that it stays in sync
+1 |#################################################################
+68fe # 1/8s remainder (in mSec)
+6909 # IOTIMER delta time since last mSec
+6913 # *128/52083 = 1 mSec
+691c # < 1 mS passed - return
+691e # time since last timer update (mSecs)
+6922 # (remainder IO times*128) + 64 (rounding)
+6926 # return to IOTIMES remainder
+6929 # effective time of this update (IOTIME-remainder)
+692d # set $3e:5, = "new mS"
+6930 # add new mSs to current mS count
+6933 # R3f +ve if new 1/8 sec
+6939 # remainder =- 1/8 sec (in mS)
+693c # = "New 1/8 Sec"
+693f # 1 Sec remainder (in 1/8 secs)
+6942 # set "New second" (when R3d = 0)
+6945 # reset 1 sec remainder (= 8/8, counts down)
+6948 # store 1/8 sec remainder (in mSec)
+694c # save IOTIME of last timer update (a true mS)
+6950 # OK. Start process
+6956 # All zero - return (exit)
+695b # 16 bit address of timer
+695e # short entry? Go to update
+6961 # load mask from timer entry
+6964 # create 16 bit address for flags
+6967 # AND flags data with entry mask
+696a # flag on or off required ?
+696d # Inverse - if flag zero, GO timer
+696f # (flags set) STOP, loop to next entry
+6971 # (flags clr) STOP, loop to next entry
+6973 # time flags - has time increment passed?
+6977 # no, loop to next entry
+6979 # Byte or Word timer
+697c # read current Word value
+6981 # read current Byte value
+6984 # OK - update. Up or Down
+6987 # negate value
+6989 # if zero jump straight to save
+698e # Not mSecs, increment timer
+6992 # add mSecs to timer
+6997 # overflow, wrap to zero
+6999 # down - jmp straight to save
+699c # up, set -1 ?
+699e # jmp to save word/byte
+69a6 # save Word timer
+69ab # save Byte timer
+69b0 ||###################################### 
+69b0 |# TIMERS Table 
+1 |# 3 or 5 byte entries
+1 |# byte  0    = flags word
+1 |# byte  2&3 WORD = timer address
+1 |# if 5 byte entry - timer controlled by flag(s)
+1 |# byte  4    = flag mask - selects control bit(s) in address
+1 |# byte  5    = flags address (start/stop) timer|#
+69b0 |# 2X = timer in 1/1024 seconds (~msec)
+
+
+69b0 |# 4X = timer in 1/8 seconds
+69b0 |# 8X = timer in seconds
+69b0 |# So
+69b0 |# bit 0 = 0 if short entry (3 or 5 bytes)
+69b0 |# bit 1 = 1 if 16 bit timer else 0 = 8 bit timer
+69b0 |# bit 2 = 0 timer count up vs down
+69b0 |# bit 3 = 0 if flag bit must be set to update timer loc
+69b0 |# bit 4 not used
+69b0 |# bit 5 = 1 update in 1/1024 seconds (~msec)
+69b0 |# bit 6 = update in 1/8 seconds
+69b0 |# bit 7 = update in seconds
+69b0 |# else entry size = 5
+69b0 |# entry size = 2 if bit 0 of first byte = 0
+69b0 |# in follow Table the 15 bit address field is byte flipped for correct word order
+69b0 |######################################
+69b1 # Byte,mSecs,Up. Time since last BP pulse?
+69b4 # Byte,Secs,Up. Time since $a1:7 = 0
+69b9 # Byte,Secs,Up. Time since $24:6 = 1
+69be # Byte,Secs,Up. Time since $a1:2 = 0
+69c3 # Byte,Secs,Up. Time since $27:7 = 1
+69c8 # Byte,Secs,Up. Time since $27:6 = 1
+69cd # Byte,Secs,Up. Time since $24:2 = 1
+69d2 # Byte,Secs,Up. Time since $24:5 = 1
+69d7 # Word,Secs,Up. Time since $a1:0 = 1
+69dc # Byte,1/8s,Up. Time since $ed:7 = 1
+69e1 # Byte,1/8s,Down. Time since $ed:6 = 1
+69e6 # Byte,Secs,Up. 
+69e9 # Byte,1/8s,Up. 
+69ec # Word,1/8s,Up. 
+69ef # Word, mSecs,Up. 
+69f2 # Byte,1/8s,Up. Time since $2b:5 = 1
+69f7 # Word,Secs,Up. Time since $2a:6 = 1
+69fc # Word, mSecs,Up.
+69ff # Word, mSecs,Up.
+6a02 # Byte,Secs,Up. Time since $eb:2 = 1
+6a07 # Byte,1/8s,Up. Time since $29:0 = 0
+6a0c # Byte,1/8s,Up.
+6a0f # Byte,1/8s,Up. Time since $a1:6 = 1
+6a14 # Byte,Secs,Up. Time since $e8:1 = 1
+6a19 # Byte,Secs,Down. Time since $e8:0 = 1
+6a1e # Byte,Secs,Up. Time since $24:0 = 0 (Not WOT)
+6a23 # Byte,Secs,Up. Time since $ec:0 = 1 (managed Fuel)
+6a28 # Byte,Secs,Up. Time since $24:7 = 1
+6a2d # Word,mSecs,Up. Time since $4f:6 = 1
+6a32 # Byte,Secs,Up. 
+6a35 # Byte,mSecs,Up. 
+6a38 # Byte,1/8s,Up. 
+6a3b # Word,1/8s,Up. 
+6a3e # Byte,Secs,Up. 
+6a41 # Byte,1/8s,Up. 
+6a44 # Word,mSecs,Up. Time since $ea:2 = 1
+6a49 # Byte,1/8s,Up. Time since $ea:1 = 1
+6a4e # Byte,mSecs,Up. Time since $ec:6 = 1
+6a53 # Word,mSecs,Down. 
+6a56 # Byte,mSecs,Up.
+6a59 # Byte,1/8s,Up. 
+6a5c # Byte,Secs,Up. Time since $ef:6 = 1 
+6a61 # Byte,1/8s,Up. Time since $ea:6 = 1
+6a66 # Byte,mSecs,Up. Time since $a1:3 = 1
+6a6b # Word,mSecs,Up.
+6a6e # Byte,1/8s,Up. 
+6a71 # Byte,1/8s,Up. 
+6a74 # Word,mSecs,Up.
+6a77 # Word,mSecs,Up.
+
+6a79 ||#################################################################
+6a79 |# Tasklist Routine at 2151, routine offset 46
+6a79 |# Update shift light
+6a79 |#################################################################
+
+6a7b # 9E5D=0(Manual trans) - TSTRAT - transmission stratagey
+6a7f # SIL (Shift Indicator Light)
+6a84 # jmp if ?
+6a87 # Table 8C34 - Incremental Indicated RPM shift point as a function of ECT
+
+6a95 # Table 8C50 - Indicated RPM shift point as a function of LOAD.
+6a9a # engine load (VE? )
+6aa1 # add RPM shift points
+6aa4 # ROM 8C0C - SPTRPM
+6aaf # set SLTMR FLG
+6ab4 # clr SLTMR FLG
+6ab7 # zero 139 timer - SLTMR
+6ac4 # 139 Shift Light Timer
+6ad4 # R47 bit 2 ON Shift Light
+6ad9 # R47 bit 2 OFF Shift Light
+6adc ||#################################################################
+6adc |# Tasklist Routine at 2151, routine offset 48
+6adc |#################################################################
+
+6add # 940E - HPACL
+6ae1 # return if no Thermactor present
+6af0 # 126 - Filtered TP
+6af5 # 9412 - SHKTP
+6afb # RAA is Throttle position
+6b00 # R47 bit 4 ON (Air management2)
+6b05 # R47 bit 4 OFF (Air management2)
+6b09 # jmp if not SIGPIP
+6b0c # jmp if SYNFLG
+6b11 # RBA - PIP time lo 16 bits
+6b1a # RBA - PIP time lo 16 bits
+6b22 # RBA - PIP time lo 16 bits
+6b2a # RBA - PIP time lo 16 bits
+6bfa # Now check for 10% each way ?
+6c04 # = 0.9 ?
+6c0f # = 1.10 ?
+6c24 # PIP time lo 16 bits with correction
+
+6c8e ||#################################################################
+6c8e |# handle HSI line 1 data - Knock sensor
+6c8e |# check for Knock if reqd
+6c8e |#################################################################
+6c8f # mask HSI data
+6c92 # 947A KIHP = 00 ( is there a knock sensor )
+6c96 # jump if line data = 0
+6c98 # set KNOCK DETECTED
+6c9b # set VIP KNOCK
+6c9f # 947A KIHP = 00 ( is there a knock sensor )
+
+6ca6 # ROM 9474 - RPMCNL
+6caa # jmp if N <= RPMCNL
+6cac # KWCTR : ROM 9479 - WINCLD
+6cb0 # jmp if KWCTR >= WINCLD
+6cb2 # jmp if not KNOCK DETECTED
+6cb5 # KWCTR
+6cb8 # SIGPIP
+6cbb # KWCTR
+6cbe # KWCTR
+6cc0 # QUEUE 9
+6cc4 # 323
+6cca |# 2284 proc address
+6ce2 # clr R4E bit 1
+6d03 # last saved PIP event time (24 bits)
+6d10 ||#################################################################
+6d10 |# Tasklist Routine at 2151, routine offset 36
+6d10 |#################################################################
+
+6d17 # New PIP received flag
+6d1c # unknown function
+6d24 # = RPM / 128
+6d2a # Table output * 128
+6d2d # = WOPEN
+6d31 # WINDOW BETA
+6d35 # output is fraction of PIP Period.
+6d3d # Table output * 128
+6d43 # RBA - PIP time lo 16 bits
+6d46 # multiply by 64
+6d49 # 9472 - WINLEN
+6d4d # 228 - WINDOW DELTA
+6d51 # Retard increment versus RPM, deg.
+6d59 # Table output * 128
+6d5f # RET INC
+6d65 # Spark Advance Rate vs RPM
+6d6d # RPM / 128
+6d73 # adv * 16
+6d83 ||# Advance all cyls 1 degree of spark
+6d89 # add 1 degree of advance to each cyl
+6d8f # 22B - SparkAdvance[ cyl 1 -8 ]
+
+6d9d # Advance Limit
+6da1 # 22B - SparkAdvance[ cyl 1 -8 ] new advance for this cyl
+6daa # Filter Throttle Posn
+6db3 # filtered result
+6e20 # is there a knock sensor ?
+6e24 # engine load (VE? )
+6e3c # clr SparkAdvance[ cyl 1 -8 ]
+6e48 ||#################################################################
+6e48 |# Tasklist Routine at 2151, routine offset 4E
+6e48 |# Key On Engine Off, Engine Running, Continuous tests
+6e48 |# There are 4 proc Tables BASE A - BASE D - how do these correspond to
+6e48 |# self test stuff
+6e48 |#################################################################
+
+6e4c # Set up EGR flags
+6e51 # jump if VIP enable is set
+6e54 # Time since CPU power up - mS
+6e58 # compare whole seconds 16
+6e5b # jmp if timer < 4096 msec (~ 4 secs)
+6e63 # jump if EEC reset
+6e66 # jump if not CRANKING - EEC reset
+6e69 # Enter KOEO (Engine off test)
+6e69 ||########## STI low - EEC reset
+6e74 # Reboot system
+6e77 # normal strategy - not self test
+6e7a # STI input is low - EEC reset
+6e7d # Transmission type
+6e81 # 3 = Manual Transmission, both clutch and gear switches.
+6e86 # 4 = Auto Transmission, non-electronic, neutral drive switch.
+6e91 # filter at 00CA[R78] use blend 116(EVP) to 380
+6e9b # jump if STI input is low
+6e9e # Vehicle speed, MPH
+6ea6 # Vehicle speed > 4 MPH
+6ea8 # SCCS on (Cruise Control)
+6eab # SCCS brake (cruise control)
+6eae # VSCDT? push proc D and execute it
+6eb0 # OK - running self tests
+6eb3 # EEC reset
+6eb5 # jump if not VIP mode flag : VSCST
+6eb8 # jump if STI input is high to EEC reset
+6ebb # jump if not CRANKING to EEC reset
+6ebe # VSCST? push proc C and execute it(STI low and engine off or starting)
+6ec0 # jump if CRANKING
+6ec3 # jump if underspeed/cranking 
+6ec6 # jump if STI input is high
+6ecb # 1C8 timer - STI input line low timer (1/8sec)
+6ecf # 1 second
+6ed2 # jmp if STI low timer < 1 second
+6ed4 # jump if not VIP mode flag : VIP enable
+6ed7 # 134 - PUTMR - Counts up after h/w reset
+6edb # compare whole seconds 1800 msec (1/1024) = 6 seconds
+6ede # jmp if timer < 6 sec
+6ee9 # SCCS on (Cruise Control)
+6eec # jump if VIP mode flag : disable VSCDT set
+6eef # 134 - PUTMR - Counts up after h/w reset
+6ef3 # compare whole seconds
+6ef8 # jmp if timer >= VVSCET?
+6efa # VIP mode flag : set VSCDT and DISABLE RUNNING
+6efd # jmp to BASE D procs
+6eff # jump if VIP mode flag : disable running set
+6eff ||# ENTER DYNAMIC TEST
+6f02 # Set VIP mode flag : disable no start and disable VSCDT
+6f07 # BASE A - computed jump
+6f0c # jump if STI input is low
+6f0f # jump VIP mode flag : disable no start
+6f0f ||# ENTER ENGINE OFF TEST?
+6f14 # BASE B - push self test function proc ?
+6f18 # test code - KOEO self test and others?
+6f20 # return
+6f22 # if SCCS ON state - return (exit if cruise control is ON)
+6f25 # 134 - PUTMR - Counts up after h/w reset (msec)
+6f29 # compare msec - 2800 * 1/1024 = 10 seconds
+6f2c # if Eng Runnung Timer >= 10seconds then return
+6f2e # 13E - timer? time since last PIP recieved (msec)
+6f32 # 400 msec(1/1024) seconds ~ 1 second
+6f35 # if time since PIP <= 1 sec then return
+6f37 # Set VIP mode flag : VSCST
+6f37 ||##### ENGINE OFF VCS TEST?
+6f3c # BASE C - computed jump in 7000 area
+6f40 # run the test routine
+6f40 ||##### ENTER ENGINE RUNNING TEST
+6f43 # BASE D - computed jump in 7000 area
+6f47 # run the test routine
+6f47 ||#### computed diagnostic calls return here
+6f48 # Save diagnostic testing registers
+6f4d ||######################################
+1 |# gets jump function index into R3A
+1 |#######################################
+6f4e # load diagnostic testing registers
+6f50 # function address index
+6f53 # X 2 - make into word index
+6f56 # original return address
+6f58 # push extra address (save diag vals)
+6f5b # Zero 1st time only, This is return address of call x7026
+6f5e # jump if first time thru here
+6f60 # return to 1st or 3rd caller
+6f62 # restore return address
+6f64 ||# Diagnostic Proc Table A
+6f65 # Diagnostic Proc Table A proc no 2
+6f82 ||####################################################################
+6f82 |# Diagnostic proc Table A
+6f82 |# sensor error stack processing - dump out errors?
+6f82 |####################################################################
+6f86 # is error stack empty?
+6f8b |# E11 - System PASS
+6f8e # Trouble Code : System PASS (no errors)
+6f8f # E 00 (end of errors? ) 
+6f93 # Hard Trouble Code Error Table
+6f97 # load next trouble code byte into word R32
+6f9d # zero is end of error codes?
+6f9f # call this for every error
+6fa1 # 342 + 13
+6fa5 # loop back small
+6fa5 |# end of error codes stack
+
+6fbd # loop back big
+6fce # loop back big
+
+6fe3 ||#######################################################
+6fe3 |# ? DUMPS OUT HARD ERROR CODES?
+6fe3 |# R32 byte has trouble code - called for every trouble code in 342 stack
+6fe3 |#######################################################
+6fe6 # error code x 16 (left one hex digit)
+6fed # execute this loop error code X 16 + 1? times
+6fff # R32 << 4 (one hex digit)
+700e |#######################################################
+700e |# entry point 1
+700e |# shift D4 right 16 times or until R19 == 0
+700e |#######################################################
+701a ||#######################################################
+7025 ||#######################################################
+1 |# this proc can shortcut returns from stack - to grandcaller
+1 |#######################################################
+
+7026 # get & save caller
+7028 # get & save grandcaller
+702a # STO fast codes
+702d # jump if STO high speed
+7039 # Self Test Output trigger
+7042 # return to grandcaller 
+7042 # return to grandcaller 
+7045 # restore grandcaller
+7047 # restore caller
+704b # Save diagnostic testing registers
+
+704f ||######################################################
+1 |# save and restore test values for self test
+1 |######################################################
+
+
+7095 ||##########################################################
+7096 # points to 0x8EDA
+709b # why does this REG need resetting
+709f # 0=sonic, 1=PFE, 2=none
+70a9 # branch ALWAYS in this ROM
+70b4 # - never happens in this ROM
+70b7 |##########################################################
+70bd # process? a trouble code?
+70bf # set R30 to end of trouble code stack
+70c1 # Low Speed Repeat
+70c7 # R30 = # 356 WORD
+70d0 # save start code?
+70d5 # KAMINDEXLow
+70dc # take next value from 7C4 Table
+70e1 # loop for 25 entries (37)
+70ea # was bit bit set?
+70ec # Table (index starts at 1 not zero)
+70f2 # skip zeros 
+70f4 # write to 356+
+70f4 ||#############################################################
+70f4 |# Restore the registers used
+70f4 |# Save the registers used for testing
+70f4 |# If ROM 97D9(EGR Type) = 1 then set bit 6 in RE6 else clear the bit
+70f4 |# If ROM 97D9(EGR Type) = 2 then set bit 6 in RD9 else clear the bit
+70f4 |# Save diagnostic testing registers
+70f4 |# Set up EGR flags
+70f4 |# Since ROM does not change this proc ALWAYS clr both bit 6 flags
+70f4 |# Things like continious tests require preserving registers
+70f4 |# change flag bit 6 in RD9 and RE6 based on ROM 97D9(EGR Type) = egr type ( 0=sonic, 1=PFE, 2=none)
+70f4 |# load diagnostic testing registers
+70f4 |# resets R72 = 180 and sets R78 = 8EDA
+70f4 |#############################################################
+70f7 # mark as end in case of exit?
+70fa # loop
+70fd # loop
+70ff # set ptr to code table
+7101 # Bubble sort Table
+711d # R30 = end of trouble code stack
+7121 |# bubble sort
+7122 # load ptr to ?
+7126 # exit and restore ptr
+
+
+7141 ||#############################################################
+1 |# Diagnostic, Trouble Codes ?  called as [7142+Reg] from 70ec
+1 |# so table must start at 1. 
+1 |##############################################################
+7167 ||#############################################################
+1 |# Self Test subroutine list KOEO.  ( From 6f14+x)
+1 |##############################################################
+716a # Proc uses next word as a PARAM
+716c # PARAM - interrupt mask address
+716e # ECT. BP, MAF sensor range tests
+7170 # ACT, EGR, NPS, A/C on,PwrSteering,VCAL, TP sensor tests
+7172 # force LSO and HSO outputs off set STO on jmp to (R34)
+7174 # Thermactor Air System test
+7176 # Fuel Pump Secondary circuit test
+7178 # dump out all 342 stack error codes to ?
+717a # incr R38 and set LSO and BiDI outputs?
+717c # proc with odd h/w xor
+717c ||######## Self Test list 2 (from 6f07)################|
+7180 # clr STO, Hard Fault, ACT, ECT, TP, TPS ?
+7182 # high RPM test (If Engine Running)
+7196 # PARAM  - for proc 8085
+71ac # dump out all 342 stack error codes to ?
+71c0 # in all three Tables at end
+71c2 # clr 1CA timer, incr R38 self test index, set bit flag and return
+71c4 # dump out all 342 stack error codes to ?
+71c6 # in all three Tables at end
+71c6 ||######## Self Test list 3 (from 6f3c)################|
+71c8 # STO off and output to low, zero VIP timer, incr R38 test index
+71ca # tweak flags
+71cc # SCCS something
+71d0 # clr 1CA timer, incr R38 self test index, set bit flag and return
+71d2 # dump out all 342 stack error codes to ?
+71d4 # in all three Tables at end
+717c ||######## Self Test list 4 (from 6f43)################|
+71d6 # STO off and output to low, zero VIP timer, incr R38 test index
+71dc # PARAM - for proc 807e
+71e4 # PARAM - for proc 807e
+71ec # HEGO - A/F ratio test?
+71ee # clr 1CA timer, incr R38 self test index, set bit flag and return
+71f0 # dump out all 342 stack error codes to ?
+71f2 # in all three Tables at end
+71f2 ||########## End of self test lists ####################
+71f7 # set code flags for clearing later
+721d # no SCCS buttons/mode
+7225 # Brake is on.
+724f # E49 SPOUT signal defaulted or 1-2 shift error E40D
+7254 # E47 air flow low at base idle
+7259 # E48 air flow high at base idle
+7262 # E67 A/C input high
+7268 # E74 Brake circuit fail - not actuated
+726e # E75 Brake circuit fail - always high
+7279 # SCCS Open Circuit Check, pars = E81,limit,bit mask(=SCCS),IO
+7281 # LSO output line 4 ON (Speed Control Vent)
+7284 # return from 7A76 to this address
+7287 # DOL Open Circuit Check, E82,limit,bit mask(=DOL),IO
+728d # SCCS controls off & stuff?
+728f # Open Circuit Check function
+728f ||############################################################
+728f |# STO off and output to low, zero VIP timer, incr R38 test index
+728f |# jump Table entry 71C8
+728f |############################################################
+7294 # set STO off flag, set STO output low, and set STO trigger
+7297 # zero 1CA timer? VIP TIMER EX?
+729b # incr test index
+# 729d |#######################################################
+729e # tweak flags, set STO on and return
+72a1 # 91 - Air/Fuel mixture not within Self test range (HEGO switching error)
+72a3 # JUMP TO (use caller data) E 91 -> err stack
+72a6 # From Diagnostic Proc Table D
+72cc # From Diagnostic Proc Table D
+72cf # From Diagnostic Proc Table D
+72d1 # LSO output line 4 ON (Speed Control Vent)
+
+72d6 # From Diagnostic Proc Table D
+
+#72dc |# //72FC # bit 5 is CID line
+#72dc |# 716E Self test jump Table entry
+7302 ||# Diagnostic Proc Table D
+7317 # incr test index
+7317 ||# Diagnostic Proc Table D
+
+7319 # clr RD9 bit 5 VVS flag1?
+731e # LSO output line 4 OFF (Speed Control Vent)
+7321 # LSO output line 0 OFF (Speed Control Vacuum)
+7328 # SCCS Count? R9B = R42 why such a strange instruction?
+732d ||#################################################################
+732d |# Tasklist Routine at 2151, routine offset ?
+732d |#################################################################
+
+736f # load diagnostic testing registers
+7372 # call set HSO Time Hold = Master IO Timer Lo + # 0003
+7375 # return to this address
+7378 # E8 Fuel Pump Open Circuit Check
+73a3 # exit if CRANKING
+
+73aa # ECT raw from AD conversion
+73b1 # trouble code bit 2 - ECT open circuit trouble code
+
+7459 # test selector is 1D7 vs 1D6 BYTE here
+746e # increment test routine selector (R38)
+7472 # max test is 00FF
+7475 # test selector is 1D7 not the 1D6 here
+7479 # - RC9 is some kind of timer
+7489 # if  Air management2 ON
+7492 # test selector is 1D7 - reset to zero
+749d # Never gets here ?
+755c # Lo,Hi limit, E hi = none, E Lo - PFE/EVP/ (sonic) voltage below closed limit
+757d # PFE/EVP/ (sonic) voltage below closed limit, Defective PFE/EPT sensor ?
+
+764d # time in self test mode?
+
+769b # tweak flags, set STO on and return
+769f # set STO off flag, set STO output low, and set STO trigger
+76c2 # jump if STI input is high
+76c2 |# incr the # times the test has been run for index R38 and less ?
+76c9 # incr 22 bytes in Table clamp at max of FF
+76d2 # clamp to FF max
+76df ||#######################################################
+76df |# sets and clears trouble code bit flags
+76df |# first param (at 001A) bottom 3 bits are index in 7C4 Table?
+76df |# rest of bit >> 3 and - 1 are error flag bit
+76df |#######################################################
+76e0 # copy the three bytes to R1A/1B/1C
+76e3 # 3rd param byte to word
+76e6 # address 8E5A + data offset
+76ea # read ROM at lookup address
+76ef # same ROM address AGAIN
+76f3 # what is this byte RAM Table?
+76f8 # 1st param byte to word
+76fb # mask out bottom 3 bits of first param (0 -7)
+76fe # R18 is now a pointer to ?
+7704 # first param >> 3 (shift out offset bits) 5 bits left
+7707 # zero value is special ( flag bits are biased up by one )
+770b # R1C = 0001 now
+770d # creates a mask of bit # (R1A - 1)
+7710 # 382 error bit flags word
+7715 # R14 is second param
+771a # value looked up above
+773d # invert mask
+773f # clear the error bit
+7745 # R14 is still? 3rd param byte (0x76E3)
+7759 # add second param and looked up ROm value
+775e # clamp max value
+7761 # compare second param sum and Table lookup value
+7766 # what is this address ?
+776c # clr bits 0,1,2
+7775 # clr bits 0,1,2
+778a # set the error bit
+7795 # save ? R14 is second param (ie 1AA + 0D = 1B7)
+779a # 382 error bit flags, bit 2 set = ECT grounded
+77a3 # clear Table 7C4 to 7D9
+77ac # tweak flags. set STO on and return
+77af # LSO output line 5 (STO) ON (MIL)
+77af |# set STO off flag, set STO output low, and set STO trigger
+77b4 # set STO OFF flag
+77b7 # LSO output line 5 (STO) OFF (MIL)
+77ba # set Self Test Output trigger
+77bd ||################################################################
+77bd |# copy specified bytes to R1A onwards (77c2)
+1 |# or where specified in R16 (77be) from GRANDCALLER subroutine.
+1 |# gets one byte from return address of caller function.
+1 |# gets reqd bytes from 'Grandcaller' function, and mods return addresses.
+1 |# IN  - 1 byte (caller subroutine), NumBytes (grandcaller subroutine)
+1 |# OUT - [R1a] or [x] onwards asigned bytes 
+77bd |################################################################
+77be # default destination is R1a onwards
+77c2 # Caller's (normal) return address
+77c4 # Get count of bytes, Inc return address
+77c7 # Get GrandCaller's return address
+77cf # Get no of bytes into dest. addr
+77d4 # and push modded returns back.
+77d6 ||################################################################
+77d6 |# extended filter ? gets 2 bytes from ROM
+77d6 |# R32 is OLD AD sensor value
+77d6 |# R34 is new AD sensor value
+77d6 |# R36 is manged filtering factor
+77d6 |################################################################
+77d7 # get ROM bytes to R1A
+77d9 # get 2 bytes into R1A from this caller's return addr
+77da # (address of) OLD AD sensor value
+77dd # NEW AD sensor value 216 - raw EVP
+77e1 # manged filter factor
+77e6 # filter
+77e9 # save updated value
+77ec ||################################################################
+77ed # get 1 ROM byte to R1A
+77f8 ||################################################################
+77f9 # get 3 ROM bytes to R1A
+77fb # 3 bytes to R1A,B,C from caller
+77fc # 382 word
+780c ||################################################################
+780c |# Key On Engine Off (KOEO) Self -Tests
+780c |################################################################
+780d # jmp if disable EOLT set
+7810 # set STO off flag, set STO output low, and set STO trigger
+7813 # do h/w RAM/ROM/CPU checks
+7816 # load diagnostic testing registers
+7819 # jump if not VIP mode flag : disable no start
+781c # Set STO output on - diddle some flags?
+781f # *HANG* - h/w error
+7821 # checksum the ROM
+7824 # test selector set to zero
+7829 # STO very fast readout set
+782f # the skip two returns do not return here
+7832 # clear STO very fast readout
+7835 # disable EOLT
+7838 # Set VIP mode flag : no start
+783b # if LSO output line 7 is ON (Fuel Pump)
+783e # jump if not VIP mode flag : VIP enable
+7841 # zero 1CA VIP TIMER EX, incr R38 self test index, and return
+7843 ||############################################################
+7843 |# ROM Checksum
+7843 |############################################################
+
+7846 # 
+7848 # Start address (2000)
+784c # End address  (9fff)
+7850 # If real end address
+7855 # add to sum
+7858 # end address reached?
+785b # loop
+785d # load next ROM range
+7862 # checksum zero ?
+7864 # E15 - EEC ROM fail
+7867 # zero 1CA timer, incr R38 self test index, and return
+7869 ||######################## ROM checksum adresses ##############
+786a # start address(set 0 for no checksum test)
+786B # @786B checksum base address. Set to zero to clear error code 15
+
+786c # last address of ROM checksum
+786e |#############################################################
+
+7873 # 61 ECT sensor circuit grounded
+787a # 51 ECT circuit open
+7886 # 21 ECT out of range
+78a0 # 22 MAP/BP sensor out of range
+78a5 # 22 MAP/BP sensor out of range
+78c1 # 56 MAF circuit above max voltage
+78c6 # 26 MAF input out of range
+78c9 # save code 26
+78cb # CALLED BELOW - zero timer, incr self test index and return
+
+78d7 # 64 ACT sensor circuit grounded
+78de # 54 ACT sensor circuit open
+78ea # 24 ACT sensor out of range
+78f9 # 32 EGR not controlling,E34 Insufficient EGR flow
+7906 # 34 Insufficient EGR flow
+7922 # 67 NPS circuit open with Air conditioning on
+7924 # 67 Neutral Pressure switch (NPS) circuit open
+7928 # 79 A/C on / Defrost
+7937 # 52 Power Steering Pressure Switch circuit open
+793b # 19 Failure in ECC reference voltage
+7947 # 63 TP sensor circuit below min voltage
+794e # 53 TP sensor circuit open, above max voltage
+795a # 23 - TP out of range during self test
+7963 ||#######################################################
+7963 |# Compare two values. First value must be less than second
+1 |# or error code is generated
+1 |# Entry points for FOUR and FIVE params( 2 addresses + optional byte)
+1 |# Both params can be plain or complex address types,complex marked by bit 15.
+1 |# four param sets flag for pass/fail, 
+1 |# five param has error code as fifth byte and set if fails
+1 |#######################################################
+7964 # mark as 4 bytes
+7967 # copy 4 bytes from caller to R1A onwards
+796a ||# entry point for FIVE params
+796f # make R1a,b into true address
+7973 # make R1c,d into true address
+797d # Jump if PASSED (no codes)
+797f # jump if 4 params
+7982 # 5 params, error code
+7985 # save errorno in (342) TROUBLE CODE Table
+7987 # clear error marker
+798a ||#######################################################
+1 |# Decode complex addresses into their TRUE addresses (plain ones OK too)
+1 |# address decoded back to input register (via R16, R42 )
+1 |# Address is encoded as 1 bit=flag, 3 bits=base reg/2, 12 bits offset from reg
+1 |# NOTE encoding is HALF reg value (because of divide by 8)
+1 |# return value is then a POINTER (as a plain address) 
+1 |#######################################################
+798f # get address (from args in caller)
+7992 # get data from address
+7995 # address not encoded - return unchanged
+7998 # Hi byte of value
+799b # Clear top nibble.  R42 = Offset address
+799e # Clear bottom nibble and flag
+79a1 # Rbase register (0-14 times 2 effectively)
+79a4 # R42 += Rbase register (as pointer)
+79a9 # update input pointer to new address
+79ac ||# 716E Self test jump Table entry
+79b9 # zero 1CA timer, incr R38 self test index, and return
+79be # LSO output line 7 ON (Fuel Pump)
+79c9 # E96 - Themactor Air System inoperative
+79cc ||# 716E Self test jump Table entry
+79d6 # E95 - Fuel Pump secondary circuit failure
+79d9 # zero 1CA timer, incr R38 self test index, and return
+79de # 'return' address
+79e2 # zero 1CA timer, incr R38 self test index, and return
+79e2 ||# 716E Self test jump Table entry
+79e2 |# where does R34 come from?
+79e7 # force all LSO and HSO otputs off and STO on
+79f6 # address to jump to ?
+79f9 # 9E65 thermactor present switch = 1.0
+
+79fd |# Idle Air Control Open Circuit Check, E81, limit, mask, - Idle Air Control
+7a05 |# Air Management 1 Open Circuit Check, E82, limit, mask, - Air Management 1
+7a0b |# Canister purge Open Circuit Check, E85, limit, mask, # 12D Canister Purge on time
+7a17 |# Fuel Pump Open Circuit Check, E87, limit, mask, IO = Fuel Pump
+7a34 # check ? E84
+7a44 |# Electro Drive Fan Open Circuit Check, E88, limit.mask = ElectroDriveFan
+7a5c |# Hi Fan Open Circuit Check, E83, limit,mask, R47 bit 6 - HiFan output line
+7a6e # call set HSO Time Hold = Master IO Timer Lo + # 0003
+7a73 # clr 1CA timer, incr R38 self test index, set bit flag and return
+7a74 ||#################################################################
+7a74 |# Four data bytes follow calls to this function (R1A,1B,1C,1D)
+7a74 |# R1A - is Trouble Code if there is an error
+7a74 |# R1B - ROM loc for limit 8F86 + this offset (word)
+7a74 |# R1C - parameter flag - mask to select the device (Fan, CANP, FuelPump etc)
+7a74 |# R1D - pointer to SFR flag byte usually R46 or 47 for output lines
+7a74 |# The OCC AD channel must be a supply voltage to the actuators
+7a74 |# This performs 'circuit' tests
+7a74 |# Measure any variation in voltage when the selected output line is switched
+7a74 |#################################################################
+7a76 # load params from stack & OCC base line test of circuit
+7a78 # fourth param byte to word
+7a78 |# toggle output line for this device
+7a7b # load contents of SFR
+7a7e # mask contents with third param
+7a81 # store back in [SFR]
+7a84 # read OCC and compare to level before - set Trouble code if out of range
+7a86 |# retoggle output line for this same device
+7a89 # xor 3rd and fourth param (if calls did not change them)
+7a8c # store fourth param? to [SFR]
+7a8f # return to callers caller
+7a8f ||################################################################
+7a8f |# Open Circuit Check ?
+7a8f |# Four data byte follow calls to this function
+7a8f |# (via 7aa1)
+7a8f |################################################################
+7a91 # load params from stack & OCC base line test of circuit
+7a99 # read OCC and compre to level before - set Trouble code if out of range
+7aa0 ||################################################################
+7aa0 |# Read reference base level OCC AD channel for the test circuit line
+7aa0 |################################################################
+7aa1 # Repeatedly read AD channels 2.4mS
+7aa3 # back up stack by one call
+7aa5 # Get 4 bytes from Grandcaller into R1A
+7aa8 # restore stack
+7aaa # circuit test param 2 - ROM location selector
+7ab1 # R1E + ROM 8E5A + 12C = 8F86 + R1E
+7ab4 # 10E - OCC - Open Circuit Check AD value
+7ab8 # 1DE - OCC reference level save value
+7abc ||###############################################################
+7abc |# Compare to the reference OCC level
+7abc |# Read the switched OCC level for the test circuit line
+7abc |###############################################################
+7abd # Repeatedly read AD channels for 5161 IOtimes
+7abf # 1DE - OCC reference level save value
+7ac3 # 10E - OCC - Open Circuit Check AD value - difference
+7ac7 # jmp if positive
+7ac9 # ABS OCC value
+7acb # limit for this circuit
+7ace # jmp if OCC >= ROM Limit - GOOD
+7ad0 # Post Trouble Code (in R1a) - open circuit error for X
+7ad3 # clr trouble code
+7ad5 ||################################################################
+7ad5 |# Repeatedly read AD channels for 5161 IO times (12.4 mS)
+7ad5 |########################################################
+7ad6 # read start time
+7ad9 # = time passed
+7add # loop until 5161 IO times have passed
+7ae3 # Save diagnostic testing registers
+7ae6 # read all the AD channels 
+7ae9 # reload diagnostic testing registers
+7aee ||########################################################
+1 |# This function forces all LSO lines and BiDir lines OFF
+1 |# sets Fan=1 (b5 R47) but clears rest of R46 and 47 and increments HSIO TIME 
+1 |# some kind of reset function ?
+1 |########################################################
+
+7aef # set Fan=1 (b5 R47) 
+7b00 ||# 716E Self test jump Table entry
+7b04 # incr self test index
+7b06 # Reset ?
+7b1a ||########################################################
+7b25 # compare to raw TP
+7b2e # if LSO output line 5 (STO) is ON (MIL)
+7b31 # fan high speed enable
+7b4d # return
+7b4f # fan control enable
+7b9a # = 80
+7b9e # exit w/o odd h/w instruction
+7ba0 # 1C2 timer?
+7baa # exit
+7bac ||########################################################
+1 |# save R1A in TROUBLE CODE Table (at 342)
+1 |# save range error code up to index 19
+1 |# trouble code set in R1A (7bb2) or via inline param (7bae)
+1 |########################################################
+
+7bae # Get 1 byte from caller to R1A
+7bb2 # 19 max error code positions in Table
+7bb8 # 342 is base of Hard Trouble Code Error Table
+
+7bbf ||###############################################################
+1 |# Range test.  Error code to 342 Table
+1 |# 1st and 2nd params are AD value to check
+1 |# 3rd and 4th params are [encoded] value limit low
+1 |# 5th and 6th params are [encoded] value limit high
+1 |# 7th param is trouble code
+1 |# params are placed in R1A/1B/1C/1D/1E/1F/20
+7bbf |###############################################################
+7bc0 # get 7 bytes to R1A - R20
+7bc3 # copy this many bytes to R1A on
+7bc4 # decode R1c value if high bit set
+7bc8 # decode R1e value if high bit set
+7bcc # actual AD value to check
+7bcf # limit low
+7bd4 # limit high
+7bdc # save specified trouble code in Table
+7bdf ||# 716E Self test jump Table entry
+7be0 # set STO off flag, set STO output low, and set STO trigger
+7be5 # clear Self Test Output trigger
+7beb # 112 - clear ECT raw ?
+
+7c00 # E98 - Hard Fault present
+7c0b # E64 - ACT sensor grounded
+7c11 # E54 - ACT sensor open
+7c17 # E61 - ECT sensor grounded
+7c1d # E51 - ECT sensor open
+7c23 # E63 - TP sensor  below min voltage
+7c29 # E53 - TP sensor  above max voltage
+7c2f # E56 - TPS sensor below min voltage
+7c35 # E66 - TPS sensor above max voltage
+# 7c3c |##############################################################
+7c40 # HEGO1 delta time initial value?
+7c45 # HEGO2 delta time initial value?
+
+7c52 # clr Knock Enabled
+7c6b # LSO output line 6 ON (Wide Open THrottle A/C cutout)
+7c6e # LSO output line 3 OFF (Idle Speed Control)
+7c71 # R47 bit 4 OFF (Air management2)
+7c74 # 12C
+7c78 # DOO trouble codes ?
+7c81 ||# Diagnostic Proc Table A
+
+7c8f # - filtered RPM
+7c97 # E12 - Cannot control RPM during high RPM test
+7ca3 # E21 - ECT out of range during self test
+7cac # E26 - MAF ? sensor out of range during self test
+7cb5 # E23 - TP sensor out of range during self test
+7cbe # E24 - ACT sensor out of range during self test
+7cc7 ||# Diagnostic Proc Table A
+7cc9 # filtered sensor output - in place (0108) - filtered RPM
+7ce3 ||# Diagnostic Proc Table A
+7ce5 # jump if no HEGO1 cross over voltage detected yet
+7ceb # jump if no HEGO2 cross over voltage detected yet
+7d06 #E42 - EGO sensor indicates system rich
+7d10 |#E92 - Air/Fuel mixture not within Self test range
+7d10 |# Diagnostic Proc Table A
+7d11 # jump if HEGO1 cross over voltage detected
+7d17 # jump if HEGO2 cross over voltage detected
+7d25 # 'filter' to scale time delta (ROM range limited to 10A)
+7d3f #E41 - EGO sensor indicates system lean
+7d45 #E91 - Air/Fuel mixture not with Self test range
+7d48 |# Diagnostic Proc Table A
+7d51 # Thermactor present?
+7d58 # 'filter' to scale time delta (ROM range limited to 10A)
+7d60 # (Air management1)
+7d63 # (Air management2)
+7d66 |# Diagnostic Proc Table A
+7d68 # jump if no HEGO1 cross over voltage detected yet
+7d6e # jump if no HEGO2 cross over voltage detected yet
+7d81 #E94 Thermactor Air System inoperative
+7d87 #E44 Thermactor Air System inoperative
+
+7d8f |# Diagnostic Proc Table A
+7d95 # HEGO2 cross over voltage detected
+7d98 # HEGO1 cross over voltage detected
+7d9f #E45 Thermactor air upstream during Self test
+7da2 # R47 bit 3 OFF (Air management1)
+7da5 # R47 bit 4 ON (Air management2)
+7da8 |# Diagnostic Proc Table A
+7db9 # HEGO2 cross over voltage detected
+7dbc # HEGO1 cross over voltage detected
+7dbf #E46 Thermactor air not by-passed during Self test
+7dc2 # Air management2
+7dc5 # Air management1
+7ddb # no of HEGOs
+7de2 |||########################################################
+7de2 |# Very odd routine
+7de2 |# Word behind caller is 'filter' to scale time delta (ROM range limited to 10A)
+7de2 |########################################################
+7deb # copy byte following call count bytes from stackptr2 to 001A
+7dee # copy this many bytes to 001A from this callers return address
+7def # mangle the value at 001A into ROM if high bit set
+7df4 # 00E0 IO time since last visit to this proc
+7df9 # time since ? * ?
+7dfd # R36 is Hi 16 bits of prior result times "filter"
+7e04 # 10A ? MAP/BP ? time?
+7e09 # time delta * # 2844 * filterFactor
+7e0e # 9E82 - 6000
+7e14 # 9E82 - 6000 - clamp if too low
+7e1a # 10A Table ?
+7e22 # 9E84 - A666
+7e28 # 9E84 - A666 - clamp if too high
+7e2c # 10A
+7e31 # 10C - ? store to raw KEYPWR?
+7e36 # store last time tweaked
+7e3a |########################################################
+7e3b # copy byte following call count bytes from stackptr2 to 001A
+7e3e # copy this many bytes to 001A from this callers return address
+7e3f # mangle the value at 001A into ROM if high bit set
+7e49 # nasty! return back two addresses
+7e4b ||# Diagnostic proc Table A
+7e56 # limit Low,Limit High,Trouble Codes, Lo limit,Hi limit
+7e8d |# Diagnostic Proc Table D
+7e7a |# Diagnostic proc Table A
+7ec4 # E33 - EGR valve (PFE and sonic) not opening
+
+
+7ecd ||########################################################
+1 |# data params follow the call here
+1 |# param word 0 (1A) - sensor value EVP ?
+1 |# param word 1 (1C) - Lo
+1 |# param word 2 (1E) - Hi
+1 |# param byte 3 (20) - Trouble Code for ? voltage lower than mangle Lo
+1 |# param byte 4 (21) - Trouble Code for ? voltage lower than mangle Hi
+1 |########################################################
+7ee7 # 35 - PFE/EPT/EVP below min voltage
+7f02 # 35 - PFE/EPT/EVP above max voltage
+7f05 # VSCST, running, no start
+7f0b # save R1A in 342 TROUBLE CODE Table
+
+7f14 ||# Diagnostic proc Table A
+7f22 ||# Diagnostic proc Table A
+7f35 ||# Diagnostic proc Table A
+7f53 # 18 - SPOUT circuit open (grounded? )
+7f4b ||# Diagnostic proc Table A
+7f60 ||# Diagnostic proc Table A
+7f75 # 13 Cannot control RPM during low RPM test
+7f7d ||# Diagnostic proc Table A
+7f8a # is knock sensor present
+7faf ||# Diagnostic proc Table A
+7fb8 # filtered sensor output - in place (0108) - filtered RPM
+7fc6 |# Diagnostic proc Table A
+8029 # E77 Operator error during Dynamic Response Test or Cyl Balance Test
+8032 # E73 Insufficient TPS change during Dynamic Response Test
+803c # E25 Knock not sensed during Dynamic Response Test
+8055 # E74 Brake on/off switch circuit open
+805c # E75 Brake on/off switch circuit closed
+
+8075 #E52 Power Steering Pressure Switch circuit open
+8075 |# Diagnostic Proc Table A
+8079 |# Diagnostic Proc Table D
+8083 |# Diagnostic Proc Table D
+808a |# Diagnostic proc Table A
+80a4 |# Diagnostic proc Table A
+80c2 |# Diagnostic proc Table A
+80d0 |# diagnostic proc Table A
+80f0 |# diagnostic proc Table A
+811a # store to raw ECT AD
+811f |# Diagnostic proc Table A
+812b |# Diagnostic proc Table A
+8142 # save R1A in 342 TROUBLE CODE Table
+8145 # store to raw ECT AD
+8161 # store to raw KEYPWR
+816b # E 90 - Pass Cyl Balance Test
+8175 |# Diagnostic proc Table A
+8188 # clr 1CA timer, incr R38 self test index, set bit flag and return
+8188 ||# Diagnostic proc Table A
+
+81b8 ||# Diagnostic proc Table A
+
+8227 |#################################################################
+8227 |# Tasklist Routine at 2151, routine offset 9A
+8227 |#################################################################
+8228 # If equal to 1, Brake is on.
+8233 # power steering on
+823e |#################################################################
+823e |# Check HEGO sensors
+823e |# Tasklist Routine at 2151, routine offset 98
+823e |#################################################################
+
+823f # Set up EGR flags
+8242 # OLD average HEGO1
+8246 # NEW value - raw HEGO1
+824a # filter factor
+824e # filter HEGO1
+8251 # save new filtered value
+8255 # clear HEGO1 cross over voltage detected
+8258 # O2S TRIP VOLTAGE
+825e # signal HEGO1 voltage cross?
+8261 # OLD average HEGO2
+8265 # NEW value HEGO2 raw
+8269 # filter oxygen sensor?
+826c # filtered value (new HEGO2 avg)
+8270 # clear HEGO2 cross over voltage detected
+8273 # O2S TRIP VOLTAGE
+8279 # signal HEGO2 voltage cross?
+
+
+827c ||#################################################################
+1 |# CPU test 
+1 |# range of 8061 ALU, addressing, push/pop etc.
+1 |#################################################################
+8280 # save old stack ptr
+8286 # set new stack pointer
+829a # exit CPU ALU error
+829c # safety catch ?
+82a7 # safety catch ?
+82b4 # test ADD
+82c0 # test SHIFT and SUB
+82ce # test XOR
+82d8 # test AND
+82e2 # test OR
+8320 # test norml
+8336 # stack test - push and pop
+834b # stack to absolute address test locations
+8358 # test stack push/pop
+836d # indexed fetch test
+837c # OK if equal, run RAM test
+8381 # reset stack ptr, enable ints and return
+8381 ||### push and pop test (called above) ######
+8397 ||# safety catch for push and pop ?
+
+8398 ||#############################################################
+1 |# memory RAM test from 100 to 8FF
+1 |# uses odd and even bit patterns (aaaa and 5555)
+1 | and restores stack at end of test
+1 |############################################################|
+839a # RAM test start and end addresses
+83af # backup contents of test location
+83b5 # test odd bits
+83c0 # test even bits
+83cb # restore contents of test location
+83d1 # loop to end
+83da # RAM error
+
+83da ||################################################################
+
+
+8404 # timer value for ?
+8409 # Check Engine LP?
+841b # tweak flags, set STO on and return
+841e # jump if VIP mode flag : disable no start
+842d # set STO off flag, set STO output low, and set STO trigger
+8432 ||################################################################
+8432 |# Diagnostic proc Table A
+8432 |# jump Table entry 0x71C8
+8432 |# reset lots of stuff and jump back to cycling thru procs
+8432 |# switch out of self test to run mode ?
+8432 |## function/maps/scalars
+8432 |################################################################
+
+8442 # force new stack pointer ?
+8446 # Reset Low speed outputs ?
+8449 # clear all LSO outputs
+8451 # Reset EEC - init Tables and ports
+8467 # Counts up after h/w reset
+846c # not self test mode
+847e # Reset STO
+8484 ||###################################################################
+8484 |# Handle HSI line 7 data (Ignition Diagnostic Moniter)
+1 |###################################################################
+848e ||#################################################################
+1 |# Tasklist Routine at 2151, routine offset 1C
+1 |#################################################################
+
+84b0 ||#############################################################
+84b0 |# Tasklist Routine at 2151, routine offset 0
+84b0 |# On start bit 4 of R24 is set, but this routine clrs it at end so,
+84b0 |# check for and set up calibration console
+84b0 |# copy calibration pointers from 2022 to 00F0
+84b0 |# if 0D00 is 2A, Enconsole is present
+84b0 |# this routine called only at reset
+84b0 |# this routine skips console ck the first time thru, then checks every time
+84b0 |#############################################################
+
+84b2 # Console status
+84ba # console present?
+84c2 # add 5D to current IOTime
+84ca # increment past zero
+84cc # to console locaion ?
+84d4 # request interrupt (in 5D IOtimes)
+84d7 # Console call
+84da # flags for data pointers
+84e2 # use these calibration pointers for console
+84e8 # h/w switch for console?
+84ed # calibration Table pointers
+84f1 # enable ints if console enabled
+84f5 # copy int vectors here
+84fe # set 8 vectors from 2022 to Rf0 -f8
+8504 # loop
+8507 # exit
+850a # console value ?
+850f # console signature?
+8519 # read/write console ?
+8525 # return address
+8528 # call here if 1FF6 is a R/W register
+852f ||#################################################################
+852f |# Tasklist Routine at 2151, routine offset 22
+852f |# EVP something
+852f |#################################################################
+
+#8538 # 134 - PUTMR - Counts up after h/w reset
+#853c # TKYON1 - Min time delay before PIPs are recognized, sec
+858b # old filtered EVP
+8590 # new value in R34
+8593 # filter factor
+8598 # new filtered EVP
+85a2 ||#############################################################
+1 |# Checksum the KAM tables  0x704 - 7AF|#
+1 |# Checksum stored at 0x702 (word)  - What is at 7e0 ?
+1 |# New checksum is OK if within 1 of saved sum, then updated 
+1 |# otherwise tables are cleared (set to 128)
+1 |# called only at reset
+1 |#############################################################
+85a3 # 86 byte tables
+85a6 # start new csum
+85a8 # Table 1
+85b0 # Table 2
+85b8 # loop
+85bb # current csum
+85cd # OK, save new csum
+85d2 ||# checksum is bad - Clear tables
+85d3 # set cells to 128
+85d9 # Table 1
+85de # Table 2
+85e6 # new csum = (56+56)*128
+85ea # save sum
+
+85f4 ||#############################################################
+1 |# checksum KAM Table 0x7E4-7EA (7EC is csum) 4 words ?
+1 |# clear cells to zero if checksum is off by more than 1
+1 |# this routine called only at reset
+1 |#############################################################
+
+85fb # add words 7E4-7EA
+8605 # old sum (cksum? )
+861d # zero cells
+8623 # new csum
+8628 |||#############################################################
+1 |#  end of routines 
+1 |#############################################################|
+8628 ||#############################################################
+1 |# Initialisation lists
+1 |#
+1 |# Start of each list has 
+1 |# Word 0 - top byte of address for list (bottom byte from each item)
+1 |# word 1 - next list START (i.e. end of this list +1)
+1 |# then has pairs of bytes -
+1 |# byte 0 address  (top byte for list + this byte)
+1 |# byte 1 data which is OR'ed into address|#
+1 |# addresses are cleared by the loop at 203d
+1 |# so this is same as assigning them, except can check result this way
+1 |#############################################################
+
+862a # high byte address = 0
+862c # next list, and end of this one
+862e # start of 1st init list
+8630 #$a1
+8632 #$4f
+8634 #$c1
+8636 #$9c
+8638 #$9d
+863a #$ae = 640 =160rpm
+863c #$af
+863e #$b0
+8640 #$b1
+8642 #$c2
+8644 #$dc
+8646 #$d0
+8648 #$c6
+864a #$46
+864c #$47
+864e #$9b
+8650 # next list start 
+865a # Addresses + 0x100 for this list
+865c # start of next list 
+865e #$100 = 0x5bc0
+8660 #$101
+8662 #$102
+8664 #$103
+8666 #$104 = 0xa280
+8668 #$105
+866a #$108 = 0x640
+866c #$109
+866e #$116 = 0x4cc0
+8670 #$117
+8672 #$126
+8674 #$127
+8676 #$128
+8678 #$129
+867a #$131
+867c #$141
+867e #$152
+8680 #$153
+8682 #$169
+8684 #$170
+8686 #$171
+8688 #$17c
+868a #$17d
+868c #$1fe
+868e # next list
+8698 # Addresses + 0x200 for this list
+869c #$20b
+869e #$20d
+86a0 #$211
+86a2 #$216
+86a4 #$217
+86a6 #$226
+86a8 #$227
+86aa #$22a
+86ac #$22b
+86ae #$23a
+86b0 #$23b
+86b2 #$268
+86b4 #$269
+86b6 #$26a
+86b8 #$26b
+86ba #$2bb
+86bc #$2b9
+86be #$2c5
+86c0 #$2d4
+86c2 #$2e0
+86c4 #$2ea
+86c6 #$2f4
+86c8 #$2fe
+86d4 # Addresses + 0x300 for this list
+86d8 #$308
+86da #$312
+86dc #$31c
+86de #$322
+86e0 #$3c3
+86e2 #$3c0
+86e4 #$3c1
+86e6 # end of all lists
+
+8bff ||######################### Reg 0xF0 points here (8c00)
+8c00 # pointer to next block (RF2)
+8c02 # default/start value for filtered TP (Throttle)
+#8c04 # 8 cyl lookups from 3e5d
+8c06 # Heated Windscreen Transition Time Threshold
+8c08 # Heated Windscreen Recognition Time Threshold - HWRT
+8c0a # Steady State Factor -  Used in MKAY and signature KAY calculations.
+8c0c # Shift Indicator Light Timer Enable RPM - SPTRPM
+8c0e # Shift Indicator Light RPM -  Shift indicator light is turned on at this rpm regardless of any other condition evaluations. 
+8c10 # time before shift light turned on (1/8 sec = 1.5 secs)
+8c11 # time before shift light turned off (= 4 secs)
+
+8c11 |## Min PIP periods 4,6,8 cyls - at 6500rpm ? - (ref 3e67)
+8c11 |# RPM at which the PIP signal is regarded as unreliable. Set slightly higher than Rev Limit Half Fuel On.
+8c12 # 4.615mS - 4 cyl  
+8c14 # 3.076mS - 6 cyl
+8c16 # 2.306ms - 8 cyl (min pip period, = 6250000/rpm)
+
+8c16 ||# Fuel Forward Lambda Decrement Time
+8c24 ||# Time Before Drive - FN394F
+8c32 ||# Shift Indicator Light RPM vs ECT - FN651
+8c4c ||# Shift Indicator Light RPM vs Load - FN652A
+8c74 ||# BAP Transfer
+8c8c ||# Startup Fuel Scaler for Time
+8c9c ||##### Accel Enrichment Fuel Scaler for Throttle Rate
+8ca6 ||##### Accel Enrichment Fuel Scaler for ECT/ACT
+
+8cb0 ||################ Func: EEC Load Scaling
+8cb0 |# Table - emission load scaling. Spark, MAF Backflow Scaler for Load 
+8cb0 |# Scale: 256.0 Offset: 0.0 Math: 1
+8cb0 |# Scale: 32768.0 Offset: 0.0 Math: 1
+8cb0 |# X: Raw Load
+8cb0 |# Y: Table Row Pointer
+8cb0 |#################
+
+
+8cce ||# Startup Fuel Scaler for ECT/ACT 
+
+
+
+8cdc ||#################################
+1 |# RPM scaling table
+1 |# Spark, Injector Timing, MAF Backflow Scaler for RPM 
+1 |# Table 8CDE Engine speed rpm scaler 0-9 for tables
+1 |# 4000 RPM up = 9, 3000 RPM = 8, 1500 RPM = 5, 500 RPM = 0
+1 |#################################
+8cf6 ||########## Table - Spark load scaling
+1 |# Emissions & Spark Scaler for Load 
+
+8d12 ||########## Table - fuel load scaling
+1 |# Base Fuel Scaler for Load 
+
+#8d2e # Table independent var is RPM
+#8d2e ||# ECT AD counts to degrees F (used at 38B8)
+#8d2e |##
+#8d2e |### O2 bias Table
+#8d2e |### O2 bias Table
+#8d2e |### O2 bias Table - cross time correction
+
+8d2e ||# Fuel & EGR Scaler for Load.
+
+
+8d42 ||# Fuel & EGR Scaler for RPM.
+8d52 ||# A/C Time Delay vs TP
+8d6a ||# Fuel C/L Ramp Rate - FN339
+8d76 ||# Fuel C/L Jump to Bias - FN342
+8d84 ||# Fuel C/L Jump From Bias - FN344
+8d8e ||# Ignition Expected Pips - FN346
+8da4 ||# Fuel Accel Enrichment vs BP - FN378
+8dae ||############## ECT or ACT A/D to degrees F
+8dae |# ECT/ACT Transfer -  Input is a rough hi byte only conversion.
+
+8dc4 # ISC Adder vs ECT - FN825A
+8dd4 # ISC Adder vs ACT - FN825B
+
+
+
+
+
+
+8de0 ||#############################################################
+8de0 |# Func: MAF Transfer function (volts => Kg per hr)
+8de0 |# Scale: 4.0 Offset: 0.0 Math: 1
+8de0 |# Scale: 4096.0 Offset: 0.0 Math: 1
+8de0 |# X: MAF Voltage
+8de0 |# Y: Mass Flow Kg/hr MAF Transfer - FN036
+8de0 |#############################################################
+
+8e59 ||################################################### RF2 points here (8e5a)|
+8e5a # next register value (RF4)
+8e6a # RPM IAC Hysterysis - "
+8e9c # MFA MPH Min -  Minimum speed to remain in MFA mode.
+8e9d # MFA MPH Hysterysis - VSMPGH
+8e9e # VSS Error Deadband -  No pulses required at this speed
+8e9f # SCCS Low Battery - LOWBAT
+8ea0 # VSS Frequency - VSCFRQ
+8ea1 # MPH Sensor Present -  0 = no sensor, 1 = mph sensor, 2 = mph sensor and cruise control
+8ea2 # ISC Dashpot Min MPH - DASMPH
+8ea3 # ISC Dashpot Hysteresis For MPH - DASMHYST
+8ea4 # ISC Min Daspot Clip For Declutch - DASMIN
+8ea6 # Managed Failure Mode Hysteresis - MFMHYS
+
+
+#8ea6 # bad MAF retry interval
+
+8eaa # VIP Spark
+8eb2 # HEGO Test Min RPM
+8eb6 # VTAP1 - VTAP1
+8eb8 # VTAP2 - VTAP2
+8eba # VTAP3 - VTAP3
+8ebc # VTAP4 - VTAP4
+8ebe # VTAP5 - VTAP5
+8ec2 # ACT min  (checked in 38A1 and 7XXX)
+8ec4 # ACT max
+8ec8 # TPS Max - TAPMAX
+8eca # TPS Min - TAPMIN
+8ed0 # VIDMST 
+8ed8 # ECT min
+
+8ed8 # ECT range low
+8ed8 ||################################################### R78 points here (8eda - why not use Rf2 ?)
+8eda # ECT range high
+8eda # ECT max 
+8ede # Goose C
+8ee0 # Goose RPM
+8ee4 # Goose TP - Min throttle voltage delta for goose.
+8eec # VBISW
+8ef2 # VCBPCT
+8ef8 # VCBDLY
+8efe # VEGOBP
+8eff # VIP EGO Switch Required
+8f00 # VIP EGO Time
+8f01 # VPTCNT -
+8f0a # EVP min
+8f0c # EVP max
+
+
+
+
+#8f0a # ACT min
+#8f0c # ACT max
+8f20 # Error 33 Threshold -  EGR did not flow
+8f26 # Error 54 Threshold -  ACT high
+8f2c # Error 87 Threshold -  Fuel pump circuit fault
+8f2d # Error 91 Threshold -  Lack of left HEGO switching.
+8f32 # Error 22 Up Count -  BAP sensor out of range.
+8f38 # Error 35 Up Count -  EVP input high
+8f3e # Error 61 Up Count -  ECT low
+8f43 # Error 91 Up Count -  Lack of left HEGO switching.
+8f44 # Error 95 Up Count -  Fuel pump open circuit
+
+8f58 # warm up /Normal temp thrshhold ?
+8f68 # max MAF voltage (mass air max) 
+8f6a # min MAF voltage (mass air min)
+8f6c # Max RPM (4500) for MAF Max Voltage Test 
+
+8f72 # MIL Delay Time. delay before turning light on after fault detected.
+8f76 # MIL Freq.  The light will flash at frequency =  1 / (2 * MILTM1).
+
+8f7a |# next limits are the min that Open Circuit Check needs to see when line toggles, else circuit is faulty
+8f7c # AM1 Open Circuit Check.
+8f7e # AM2 Open Circuit Check.
+8f80 # High Speed Fan Open Circuit Check.
+8f82 # EVR Open Circuit Check.
+8f84 # Canister Purge Open Circuit Check.
+8f86 # Fuel Pump Open Circuit Check.
+8f88 # Low Speed Fan Open Circuit Check.
+8f8a # SCVNT Open Circuit Check.
+
+8fa2 # Max Idle RPM for EPT Test
+
+8fd5 ||############## RF4 points here (8fd6) #####################################
+8fdd # Allow MFA fuel economy mode strategy if set.
+8fde # Enable Special Injector Timing In Neutral
+
+8fdf # Injector Timing Value in Neutral
+8fe0 # Maximum ECT at cold start to use open loop fuel multiplier.
+
+
+8fe1 # O/L Fuel Startup Neutral Multiplier
+8fe2 # O/L Fuel Multiplier Time Delay
+8fe3 # Fuel Shut Off Deceleration Time Delay
+8fe4 # MFA State Min RPM
+8fe6 # MFA State Max RPM
+8fe8 # MFA State Constant RPM Entry Condition
+8fea # MFA State Max Load Condition
+8fec # MFA State EGO Switch Requirement
+8fee # MFA State Max RPM Hysterysis
+8ff0 # MFA State Min RPM Hysterysis
+8ff2 # MFA State Min Load
+8ff4 # MFA State Max Load Condition Hysterysis
+8ff6 # MFA Min BP for Fuel Economy Mode
+8ff7 # MFA Min BP for Fuel Economy Hysterysis
+8ff8 # MFA Ramp Increment
+8ffa # Injection Timing Pulse Edge -  0 = Use rising edge, 1 = Use falling  edge
+8ffc # Injector delay timing multiplier
+8ffe # injector delay global
+9002 # global accel pump multiplier
+
+9006 # Fuel Accel Min TP Delta -  Conversion wrong.
+9008 # Delta Load for Intake Manifold Filling - AEACLD
+900c # Fuel Transient Comp Multiplier
+900e # Fuel Transient Min RPM Idle - TFSMN
+9011 # Fuel Equilib Intake Surf Multiplier - MTEISF
+9012 # Fuel Time Constant Multiplier - MTEFTC
+9013 # Fuel Transient Compenstation - TFCISW
+9014 # Fuel Decel Multuplier - MEFTRA
+
+
+
+
+901a # Engine displacement 1B4A = 6986 (unit = 0.0430981 Cubic Inches)
+
+901c # low injector slope (unit = 0.00171662 lbs/hr)
+901e # high injector slope (unit = 0.00171662 lbs/hr)
+9022 # ISC Gain For Underspeed in Neutral. 
+9024 # ISC Gain For Overspeed in Neutral. 
+9026 # ISC Gain For Underspeed in Drive. 
+9028 # ISC Gain For Overspeed in Drive. 
+902a #  and gain modulator, used as input in IPSIBR calculation.
+902c #  and gain modulator, used as input in IPSIBR calculation.
+902e # Throttle Body Air Flow
+9030 # ISC Min Airflow 
+#9032 # spark adder closed throttle
+9032 # ISC Gain Associated With The Desired DASPOT Airflow
+9034 # ISC Offset term applied to the DASPOT calculation
+9036 # ISC TP Hysterysis
+9038 # ISC RPM Control Adder -  Added to desired idle rpm as part of evaluating if ISC C/L rpm control is allowed
+903a # ISC RPM Deviation Allowed Over ISC Time
+903c # ISC Min Speed To Enter C/L RPM Control
+903e # ISC RPM Deadband
+9040 # ISC Throttle Position Adder
+9042 # Airmass Filter Sample Rate
+9043 # ISC Time Interval The Change In RPM Is Evaluated
+#9044 # LOWLOD - LOWLOD
+9045 # A/C Load Adder
+
+#9046 # UPDISC - UPDISC
+9047 # ISC KAM Update Rate
+9048 # Neutral idle open loop delay (time in closed loop control before going open loop, secs)
+9049 # drive idle (rpm in drive)
+904a # Base Idle Speed (target) in Neutral (672rpm) before additions
+904c # Base Idle Speed (target) in Drive (672rpm) before additions
+# 904c |# Air flow from N and TP when MAF fails
+
+
+904e # Buzz RPM -  Additional rpm added at start up to idle rpm to clear engine.
+9050 # Idle RPM Adder For A/C
+9052 # Idle GPAS Clip Limit
+9058 # ISC Air Neutral To Drive
+905a # ISC Air Drive To Neutral
+9066 # ISC Startup Kickdown Time
+9067 # Buzz RPM Time -  Duration that Buzz rpm is added to base target idle rpm at startup.
+9068 # ISC Time Before N/D or D/N Switch Registers
+9068 ||# MFA Fuel Table -  Possibly the fuel table used in closed loop
+
+90b1 ||# MFA Altitude Multiplier vs BP - FN311
+
+
+90c5 # TP Scaler for MAF Failure 
+90de ||# Failed Mass Air Flow Sensor
+1 |#  -  Substitution air mass value used if both the MAF and TP sensors have failed.
+90fe ||# Failed Mass Air Flow Sensor (TP OK)
+1 |# -  Substitution air mass value used if the MAF sensor has failed and the TP sensor is ok.
+
+
+
+
+
+913e ||# Injector Timing Scaler for Load 
+
+915c ||# Injector Timing - FN1315
+1 |# 10 Cols: Speed [RPM] 500,700,900,1100,1300,1500,2000,2500,3000,4000
+1 |#  8 Rows: Load []   .05,.15,.23,.30,.40,.50,.60,.75
+
+1 |#  - injector timing (global injector delay in crank degrees)  
+
+91a6 ||# Injector Output Port  (Links injector to fuel pulsewidth, 0 = use Fuel Pulsewidth)
+91b0 ||# Injector Firing Order - FN1329
+
+91b9 ||# Func: Accelerator Enrichment Multiplier vs TPS ( accelerator enrichment vs TP voltage) - FN331B
+91c9 || # Accel Enrichment Fuel (lbs/min)- FN1303
+1 |# 7 Rows: ECT [DegF] -30,0,30,50,100,150,200
+1 |# 8 Cols: Throttle Rate [Deg/sec] 15,33,48,63,77,90,110,125
+
+9203 ||# Max Air Charge vs RPM -  The maximum air charge based upon rpm.
+9228 ||# Table - injector breakpoint vs battery voltage ( voltage, lbs/rev)
+
+9248 ||# ISC Startup Scaler for ECT.
+9254 ||# ISC Transfer -  Alter if air flow characteristics through the ISC valve have changed.
+
+9282 ||# ISC Adder vs RPM - FN810
+9296 ||# ISC Dutycycle Multiplier vs Load - FN820B
+92ae ||# ISC Gain vs RPM Error - FN824
+92be ||# ISC Startup RPM vs ECT - FN826A
+92cc ||# Spark Idle Multiplie vs Dashpot - FN839
+92d4 ||# ISC Error Spark Multiplier Drive - FN841D
+92ee ||# ISC Error Spark Multiplier Neutral - FN841N
+930a ||# ISC C/L RPM Correction Rate - FN860
+
+
+9326 ||# Table - dashpot decrement rate (dashpot decrement step at given flow(Kg/Hr(flow),Kg/Hr(Step))- FN879
+1 |# X: RPM  # Y: Dashpot Clip [lb/min]
+
+
+
+9342 ||# Max Dashpot Pre Position Clip (maximum dashpot airflow by rpm in Kg/Hr)- FN882
+9356 ||# ISC duty cycle during crank (keyed off ect at start) - FN884
+9364 ||# Desired Airflow Multiplier -  Multiplier of desired idle airflow to adjust for ECT and time in run mode.
+1 |# Airflow multiplier vs. ECT and ATMR3
+9389 ||# Desired idle airflow in drive (Kg/Hr)
+939a ||# Desired idle airflow in neutral
+
+93a6 ||################################################### Reg 0xF6 points here (93a8)|
+
+93aa # Air Charge Manifold filling model slow filter constant
+93ac # Air Charge Manifold filling model fast filter constant
+93ae # Air Charge Fraction to select slow transient vs fast
+
+93bb # Brake Input H/w Present - Set if brake pedal switch present.
+93bc # Power Steering Pressure Switch Present
+
+93e1 # Electronically Controlled Accessory Drive Present - ECADHP
+
+93e4 # H/w Present (Electronic Control Assembly ? )
+93ef # Canister Purge O/L Enable - PURGSW
+93f6 # Purge Hot Startup Delay -
+93fd # A/C Min Time Before Fan Is On - ACWDLY
+
+9400 # A/C Clutch Engage Delay
+9402 # A/C Clutch Engage Max Temp - CTAC
+9403 # A/C Clutch Engage Max Temp Hysterysis - CTACH
+
+
+
+940e # Set if Adjustable Dampers Present
+
+9410 # Min Air Charge for Adjustable Damper -  The minimum air charge to indicate hard acceleration.
+9412 # Min TP for Adjustable Damper -  The minimum voltage above closed throttle to indicate hard acceleration.
+
+
+9414 # coolant fan low speed temp (220DegF)
+9415 # High Speed Fan Temperature Hysteresis - HSFHYS
+9416 # Low Speed Fan Temperature Hysterysis - LSFHYS
+9417 # Low Speed Fan MPH - LSFVS
+9418 # Low Speed Fan MPH Hysterysis - LSFVSH
+9419 # Low Speed Fan Min Time Before High Speed - EDFTM
+941a # A/C Min Time Off Before Turning Fan Off - ACMNFT
+
+
+941c # Low Speed Fan Present/Enable
+941d # High Speed Fan Present/Enable
+941e # fan high speed temp 1(234DegF)
+941e # ect1 fan on 
+941f # ect2 fan on fan high speed temp 2(242DegF)
+
+9420 # Fan High Speed Min RPM - HSFRPM
+9421 # Fan High Speed Min MPH - HSFVS
+9422 # Fan High Speed Min Load - HSFLOD
+9424 # Default ISC Dutycycle -  Default ISC dutycyle when both TPS and MAF failed flags are set
+9426 # Default Desired Idle RPM -  Default desired idle rpm when both TPS and MAF failed flags are set
+
+
+
+
+
+
+9428 # Default ECT value?
+942f ||################################################### Reg 0xF8 points here (9430)
+9432 # closed throttle spark adder
+9434 # part throttle  spark adder (Deg BTDC)
+
+943a # spark adder WOT  ( Deg BTDC)
+943c # Spark Limit Min - SPLCLP
+943d # Spark Limit Max - SPUCLP
+943e # PT Spark Multiplier - "
+943f # Spark/Fuel Lug Time Limit - LUGTIM
+
+9440 # Lugging Timer Reset Switch -  If set then Lugging Timer is cleared before Lugging Timer Up Flag is cleared and Lugging Timer Down Flag is set.
+
+9442 # Spark Adder Neutral - NSADD
+9444 # Spark Max PIP RPM - SPKSWL
+9446 # Spark Min PIP RPM - SPKSWH
+9448 # RPM to MPH Ratio for First Gear - TTNOV
+
+
+
+
+
+
+9449 # High Data Rate Electronic Spark H/W present 
+944a # Computer Controlled Dwell Present if Set. (else dwell is TFI controlled)
+9450 #  # Slope for linear equation describing PIP period and percent of PIP period for acceleration, (Units = Beta/second)
+9452 # Max PIP acceleration in percent of PIP period, Beta
+9454 # Spark Advance Limit PIP%
+
+9456 # max low speed dwell (off time in ms )
+9458 # max high speed dwell  (off time in ms )
+945A # DWLWF - Weighting factor determining effect of ECT and ACT on Base Dwell, unitless.
+945c # Switch point for change of max permitted DWELL,sec
+945e # Spark Tip In TP - KACRAT
+9460 # Spark Retard For Knock Sensor - RETLIM
+9461 # Spark Knock Advance Limit - ADVLIM
+9462 # Tip in retard (max tip in spark retard in Deg BTDC)
+9463 # Spark Tip In Advance Per PIP - TIPINC
+9468 # Spark Knock Min RPM -  The minimum rpm for the knock strategy to be enabled.
+946c # Spark Knock Min ECT - ECTNOK
+946e # Spark Tip In Max RPM - NTIP
+9478 # Spark Tip In TP Threshold - KNKCYL
+947a # Knock Input H/w Present
+
+
+
+9487 ||# PT Spark Scaler for ECT 
+94a8 ||# Closed Throttle Spark Adder For RPM - FN111
+94bc ||# CT Spark Adder For ECT - FN112
+1 |# Generates cold temperature spark advance. Input = ECT, deg F and Output = spark adder.
+
+
+94cc ||# Closed Throttle Spark Adder For BP - FN115
+94d8 ||# LOM spark Strategy - (load managemnt at WOT ?) Input: RPM and Output: load.
+
+94ea ||# Part Throttle Spark Advance vs ACT - FN1261
+94f6 ||# LOMALT Multiplier vs BP - FN129A
+9502 ||# WOT Spark Advance vs RPM - FN1311
+
+9524 ||# WOT Spark Advance vs BP - FN1331 (Hg , Degrees)
+
+9530 ||# WOT Spark Advance vs ECT - FN134
+953e ||# WOT Spark Advance vs ACT - FN135
+954c ||# Idle Spark Subtractor - FN180
+9558 ||# ISC Neutral RPM Adder - FN880
+9566 ||# Startup Kicker Time Delay - FN400
+
+9572 ||# Sea Level (Base) Spark Table (Deg BTDC = load vs RPM)
+1 |# - The ecu interpolates between the Sea Level and Altitude spark tables during normal part throttle
+1 |# operation.  Set to the same as the Sea Level Spark table.
+1 |# 10 Cols: Speed [RPM] 500,700,900,1100,1300,1500,2000,2500,3000,4000
+1 |#  8 Rows: Load []   .05,.15,.23,.30,.40,.50,.60,.75
+
+95c3 || # Altitude Spark Table
+1 |# - The ecu interpolates between the Sea Level and Altitude spark tables during normal part throttle
+1 |# operation.  Set to the same as the Sea Level Spark table.
+1 |# 10 Cols: Speed [RPM] 500,700,900,1100,1300,1500,2000,2500,3000,4000
+1 |#  8 Rows: Load []   .05,.15,.23,.30,.40,.50,.60,.75
+
+1 |# 95C4 @95C4 
+
+960a ||# sea level (Base) lom spark Table
+1 |# - A more aggressive spark advance used during acceleration.
+1 |# 10 Cols: Speed [RPM] 500,700,900,1100,1300,1500,2000,2500,3000,4000
+1 |#  8 Rows: Load []   .05,.15,.23,.30,.40,.50,.60,.75
+
+#1 |# 9614 @9614 altitude lom spark (load vs RPM)
+
+
+965a ||# Part Thottle Spark Adder for EGR
+
+
+
+
+
+
+96aa ||# PT Spark Adder for RPM
+1 |# Table of spark adders from engine speed N and LOAD. (4 x 3) 
+1 |# X input is RPM  Y -input is LOAD
+96bc ||# Torque Reduction Table - FN1119
+970a ||# Part Throttle spark modifier (adder). (ECT,LOAD) 
+# 1 |# 9749 @9749 min high speed dwell
+
+9741 ||# Min Low Speed Dwell - FN160A
+1 |#   = Dwell/Coil off time vs battery voltage 
+975c ||# Min High Speed Dwell - FN160B1 
+1 |#   = Dwell/Coil off time vs battery voltage 
+# |# 9761 @9761 min low speed dwell
+9774 ||# Spark Knock Retard Increment vs RPM - FN143A
+9782 ||# Spark Knock Threshold Time - Output is fraction of PIP period.
+9790 ||# Spark Knock Threshold Position.
+
+979a ||# Spark Advance Rate vs RPM
+
+1 |#  -  Limits the advance rate to avoid pinging, increase to improve throttle response.
+97a6 ||#################### RFA points here (97a8)|
+
+97aa # PT Threshold -  Added to closed throttle value.
+97ac # WOT Threshold Hysteresis - HYST2
+97ae # PT Threshold Hysteresis - 
+
+97b0 # WOT breakpoint. TPS voltage - 1
+ 
+97b2 # 254 degrees?
+
+97b3 # Fuel Lugging Mode O/L Min ECT - LDEH
+97b5 # Min Time for Lugging O/L -  The minimum time in lugging mode required for the Lugging O/L Flag to be set.
+97b6 # Fuel Lugging Mode O/L Min Load - LDMH
+97b8 # Fuel Lugging Mode O/L Min Load Hysteresis - LDMHH
+97ba # Global Open Loop Fuel Multiplier - OLMCL
+
+
+
+
+97bc # RPM classifications
+
+
+
+97cc # EGR PT Adder - KPEI
+97cd # egr multiplier (byte)
+97ce # EGR Dutycycle for Valve to Open - DCOFF
+97d0 # EGR Deadband Value for EVP - EGRDED
+
+97d2 # Calibration time delay to ramp in EGR (sec)
+97d4 # EPT Transfer - XFREPT
+
+97d9 # EGR type (0=sonic, 1=PFE, 2=none)
+97e2 # Dashpot decrement Filter factor ?
+97e6 ||## Filter factors for the various filter & rollav subroutine calls, mapped by encoded addresses
+1 |# number range d040 - d060,  maps to 97e8 - 9808|
+
+97e8 # EVP output   (d040)
+97ea # BAP 1
+97ec # ECT 
+97ee # EGR 1    (d046)
+97f0 # EVP    (d048)
+97f2 # AM   (airflow)
+97f4 # RPM 1    (d04c)
+97f6 # TP 1   (Throttle) (d04e)
+97f8 # VBAT     (d050)
+97fa # MPH 1    (d052)
+97fc # LOAD     (d054)
+97fe # BAP 2    (d056)
+9800 # Injdly output  (d058)
+9802 # MPH 2    (d05a)
+9804 # RPM 2    (d05c)
+9806 # TP 2   (throttle) (d05e)
+9808 # EGR Filter   (d060)
+
+
+
+
+
+
+
+
+980c ||# High Speed Spark Retard -  Deducted from spark calculations.Table 980D High Speed Spark retard, mph.
+
+981a ||# Fuel High Speed Multiplier - FN396A
+9829 ||# Func - sea level lugging Open Loop multiplier (vs rpm) - FN308
+9842 ||# Func - Altitude Lugging Open Loop Fuel Multiplier (RPM) - FN309
+
+985e ||# Func - Fuel Crank PulseWidth Multiplier vs Time - FN306
+9876 ||# Cranking Fuel PulseWidth vs ECT - FN348
+
+989a ||# Fuel Under RPM Pulsewidth vs ECT - FN387
+98ae ||# Exhaust Back Pressure Correction
+1 |# -  Barometric pressure correction for exhaust back pressure calculation
+98b8 ||# EGR Valve Upstream Pressure
+1 |#  -  Upstream pressure as a function of input(AM * KAMREF) output = H2O
+98de ||# EGR Multipiler for ECT - FN211
+98ec ||# Spark vs BP Sealevel - FN212A
+98f6 ||# EGR Multipiler for BAP - FN217A
+
+9902 ||# EGR Mass Flow vs EGR Valve Position - FN219A
+9918 ||# EGR Multipiler for ACT - FN220
+9924 ||# EGR Position vs Desired Flow - FN221A
+993e ||# EGR Duty Cycle Adder vs EGR Error
+995a ||# EGR mass flow as a function of DELPR -  is this EGR Transfer Function?
+9982 ||# EGR Desired Drop vs Flow - FN247
+
+99aa ||# Table - Sea level EGR table - FN908A
+1 |# X = scaled RPM Y = scaled load. Output = Percent EGR
+99f4 ||# Table - Altitude EGR table - FN908B
+1 |# X = scaled RPM Y = scaled load. Output = Percent EGR
+
+9a44 ||# MFA EGR Multiplier -  Multiplier used for ramping in managed fuel air tables.
+9a56 ||# Canister Purge Duty Cycle Multiplier - FN600
+9a64 ||# Canister Purge Duty Cycle Multiplier - FN602
+9a70 ||# Canister Purge Duty Cycle vs Airmass -  Conversion to be determined.
+
+
+
+
+
+
+
+
+9a7c ||################################################### Reg 0xFC points here (9a7e)|
+9a80  Percent Load Switch - Set for load% = load, clear for load% = load/peak load
+
+9a82 # Half fuel on
+9a84 # Half fuel off
+9a86 # Speed Limiter A On
+9a87 # Speed Limiter A Off
+9a88 # Speed Limiter B On
+9a89 # Speed Limiter B Off
+9a8c # ECT limit LO
+9a8d # ECT limit Hi
+9a92 # throttle position to force open loop (TPS voltage - 1)
+9a94 # no fuel rpm (max rpm)
+9a95 # rev limit
+9a98 # Min no of HEGO switches required for WARM_EGO_FLAG to be set.
+9a9a # min load for open loop
+9a9c # min load for closed loop
+9a9e # Upper LOAD Limit for Closed Loop Fuel Control,unitless
+
+9aa0 # Time at high load to force Open Loop (secs)
+9aa2 # Desired A/F Ratio Max -  is clipped to this limit = 1.30
+9aa4 # Desired A/F Ratio Min -  is clipped to this limit = 0.75
+
+9aaf  Injectors Per Output Port -  No of injectors fired by each port.
+9ab0 # no of cyls
+9ab1 # Injector Fire Method -  1 = sequential, 2 = simultaneous
+9ab6 # Max RPM for Idle -  max rpm to allow Idle Flag to be set when Closed Throttle flag set.
+9ABD # NITMR3 - ATMR1 timed delay to enter Closed Loop fuel after Hot start, seconds.
+9ac3 # min ect for decel fuel shutoff (Deg F - 140)
+9ac4 # Fuel Shut Off Max Load.
+9ac6 # Fuel Shut Off Max Load Hysterysis.  
+9ac8 # Min RPM for Decel Fuel Shut Off.
+9aca # Min RPM for Decel Fuel Shut Off Hysterysis.
+9acc # Fuel Shut Off Neutral Max Time - DSTM1
+9acd # Fuel Shut Off Shift Max Time - DSTM2
+9acf # Decel Fuel Shut Off Time Extended - CTEDSO
+9ad0 # Fuel Shut Off Min Time at PT - DSFTM
+9ad1 # Fuel Shut Off Min PIP To Remain O/L - PIPNUM
+9ad4 # Fuel Shut Off Shift Min RPM - SHFRPM
+# 9ad4 # Fuel Shut Off Time To Enable - CTDFSO
+9ad6 # Fuel Shut Off Shift Min RPM Hysterysis - SHFHYS
+9ada # Fuel Shut Off Deceleration Min MPH - DFSVS
+9adb # Fuel Shut Off Deceleration Min MPH Hysterysis - DFSVSH
+9ae1 # Fuel Shut Off PT Enable -  1 = PT decel fuel shut off, 0 = CT decel fuel shut off.
+9ae2 # Adaptive ECT Min - AFECT1
+9ae4 # Min ACT for Adaptive Control - AFACT1
+9ae5 # Max ACT for Adaptive Control - AFACT2
+9ae6 # Adaptive Delay Time - ADAPTM
+9aee # Adaptive Control Min - MINADP
+9aef # Adaptive Control Max - MAXADP
+9af2 # HEGO Rich Correction - LMBJMP
+9af8 # Adaptive Max Fast Cycles - KWUCNT
+9afa # Adaptive Idle Low RPM - HCAMSW
+9afb ||#  ISC Time Scaler for Time 
+9b0c ||# Table - Emission Table RPM scaling
+9b2c ||# Func - Injector Offset vs Battery Voltage  (Reduce for larger injectors).
+9b44 ||# Func - Open Loop Fuel Multiplier vs ACT - FN300
+9b52 ||# Func - Closed Throttle, Open Loop Fuel Multiplier vs ACT - FN301
+9b68 ||# Func - Fuel Idle Neutral Multiplier - FN301N
+9b7c ||# Func - WOT Fuel Multiplier vs RPM - FN303
+
+
+9b9c ||# Table - MAF Backflow Correction
+1 |# Multiplier of raw air mass to compensate for backflow in the MAF sensor.
+
+9be6 ||# Table - Base Fuel  (A/F ratio load vs ECT)
+1 |#  A/F ratio - load vs ECT,  Used when ECT is low and WARM_HEGO_FLAG = 0
+1 |# 10 Cols: ECT [DegF]  -30,0,30,60,90,120,150,180,210,240
+1 |#  8 Rows: Load []   .05, .15, .30, .40, .55, .70, .80, .90
+
+
+9c36 ||# Table - Startup Fuel -  Subtracted from Base Fuel table for warm up enrichment.  [A/F Ratio]
+1 ||# fuel base (correct address? )
+1 |# 10 Cols: ECT [DegF]  -30,0,30,60,90,120,150,180,210,240
+1 |#  8 Rows: Time [Sec]  0,3,5,10,15,25,35,45
+
+#9c86 ||# fuel startup
+#9c86 ||# Table 9C90 fuel time scaling
+9c86 ||# Peak Load at Sea Level vs RPM
+1 |# Adjust if engine is substantially more efficient than stock and Percent Load Switch is not set.
+9ca8 || # Load Limit Open Loop vs ECT - FN320A
+9cc4 || # Fuel Drive Engagement vs ECT - FN371
+9ce4 || # Fuel Equilibrium Intake Surface - FN1321
+
+#9d32 |# Scale: 128.0 Offset: 0.0 Math: 1
+#9d32 |# Scale: 4.0 Offset: 0.0 Math: 1
+#9d32 |# X: RPM
+#9d32 |# Y: Open Loop Fuel Multiplier
+
+9d36 |# Fuel Equilibrium Time Constant - FN1322
+1 |# 10 Cols  8 Rows
+
+#  2e ||# fuel ect scaling
+
+9d7e ||# Table - Exhaust Pulse Delay
+1 |# The time, in revs per second, from when a fuel change is made until the HEGO sensor indicates this change. 
+1 |# Result is used to calculate the transport delay in PIPs and seconds.
+
+
+9da4 ||# Table - HEGO amplitude
+
+9dc4 ||# Table - HEGO bias
+1 |# Allows the averaged A/F ratio to be shifted slightly rich or lean to adjust emissions.
+1 |# A rich mixture will lower NOx but raise CO, a lean mixture will do the opposite.
+
+
+
+9de4 ||# Func: Open Loop Fuel Multiplier vs RPM (FN374)
+
+9dfc ||Table - Adaptive Control Update Rate - FN1325    (for learning cells ?)
+9e58 ||################## Reg 0xFE points here (9e5a) ############################|
+9e5a ||## TRLoad - Transmission Type -  0 = manual, no clutch or gear switches, forced neutral state
+1 |# 1 = manual, no clutch or gear switches  2 = manual, one clutch or gear switch 3 = manual, both clutch and gear switches
+1 |# 4 = non electronic auto, neutral drive switch  5 = non electronic auto, neutral pressure switch, 6 = electronic auto , PRNDL sensor
+9e5c ||## Tstrat - Transmission Strategy -  Selects which transmission strategy to use;
+1 |# 0 = no transmission control  1 = SIL (shift indicator light) 2 = A4LD with 3/4 shift control and convertor clutch control 
+1 |# 3 = AXOD  4 = C6E4 (E4OD)  5 = A4LD-E  6 = FAX-4  7 = AOD-4 (AOD-I)  8 = 4EAT  9 = CD4E
+9e5e # Hot Start Min ECT -  The minimum ECT for a hot start condition to be recognised.
+9e5f # Cold Start Max ECT -  The maximum ECT for a cold start condition to be recognised.
+
+
+9e61 # PIPs per Cycle -  Number of PIPs per dizzy rev. (2 engine revs)
+9e64 # Lambda Reset Switch -  Set if desired A/F ratio is to be clipped to be no leaner than 14.64 when transiting from O/L to C/L.
+
+
+9e65 # Thermactor H/W Present (values 1,2,3 checked...)
+9e66 # CID Sensor Present
+9e67 # CID Sensor Type - 1 = Variable Reluctance 0 = Hall Effect sensor.
+9e67 ||# Signature PIP duty cycle, 8 cyls/<35% = .20, 6 cyls/< 30% = .24, 4 cyls/30% =  .29, Not present = 0.99
+9e70 # no of HEGOs
+
+9e74 # MAF Min Airmass Clip
+
+abcd #
+feba
+b048 # ? - neutral idle open loop delay (time in seconds under closed loop control before going open loop)
+bab6 # - max rpm closed throttle idle
+ffff
+ffff
