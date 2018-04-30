@@ -1101,7 +1101,7 @@ SYM 94da  "LOM_spark"
 SYM 9366  "ECT_AM_Mult" 
 sym 9afc  "HCAMSW"
 sym 924c  "ISC_ECT_SC"
-
+sym 943f  "LUGTIM"
 
 #table 9102 9147 :o 10 
 #table 9160 91af :O 10 Y 
