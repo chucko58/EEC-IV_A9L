@@ -1,0 +1,23 @@
+The background routine at 0x6D17 calculates a number of parameters for
+the knock sensing and determines when to activate the tip-in retard.
+The knock sensor hardware is of course absent on Fox Mustangs.  If we
+wish to delete the tip-in retard logic as well, we can simply omit
+this routine from the background tables.
+
+However, if we want to preserve the option of tip-in retard while
+eliminating the knock sensor logic, here are a couple of simple
+changes.
+
+First, change all references of 17 6D (word 0x6D17) in the background
+table to AA 6D (word 0x6DAA). This is the location at which the tip-in
+retard logic starts.
+
+Second, patch in a RET instruction at 0x6E10:
+
+Is:
+
+4E10: 9B F8 3C B0
+
+Becomes:
+
+4E10: F0 FF FF FF

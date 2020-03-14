@@ -1,0 +1,259 @@
+The current list of background tasks is:
+
+
+####### Tasklist Subroutine Lists
+####### List A - normal operation - no self tests
+
+218a: b1,84               vect  84b1,            Check_ConsoleD                    # Check console, init RF0 regs
+218c: 5d,23               vect  235d,            check_KAM                         # Validate/initialise KAM
+218e: 52,58               vect  5852,            Update_dwell                      # Update Computer Controlled Dwell
+                                                                                   # (not present in A9L, routine can be deleted)
+2190: 86,37               vect  3786,            set_rpm_flgs                      # Set RPM Flags
+2192: 2e,22               vect  222e,            Read_AD                           # Read AD channels
+2194: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+2196: f3,37               vect  37f3,            Update_WOT                        # Update WOT flag
+2198: f4,4e               vect  4ef4,            Do_accelpump
+219a: 5a,3d               vect  3d5a,            Update_HWND                       # Update heated windshield flag
+219c: e4,3c               vect  3ce4,            Update_MPH                        # Update (MPH) vehicle speed values
+219e: ac,3d               vect  3dac,            Update_rpm                        # Update RPM?
+21a0: dd,63               vect  63dd,            Update_AC                         # Update A/C clutch control, idle increment
+                                                                                   #  (can be bypassed if no A/C)
+21a2: d4,65               vect  65d4,            Set_Timers
+21a4: fe,68               vect  68fe,            Update_timers                     # Update Timers
+21a6: 8f,84               vect  848f,            Set_ign_timers
+21a8: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel consumption for DOL
+21aa: 7c,3e               vect  3e7c,            Load_Calc
+21ac: 30,85               vect  8530,            Update_PFE_EGR                    # Update PFE EGR (not present in A9L)
+21ae: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+21b0: 41,41               vect  4141,            Check_spd_lim                     # Check for RPM and Speed limiters (patched by Z_LC_SW in GUFB.xls)
+21b2: a1,41               vect  41a1,            Update_clolp                      # Update closed loop flags
+21b4: 00,47               vect  4700,            Adapt?                            # Adaptive something               (patched by Z_ADPSW in GUFB.xls)
+21b6: d7,4a               vect  4ad7,            Calc_Fuel                         # Background fuel calculation
+21b8: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+21ba: 36,51               vect  5136,            Calc_EVP                          # EVP something
+21bc: d9,54               vect  54d9,            Calc_EGR                          # EGR stuff - must follow Calc_EVP
+21be: c3,55               vect  55c3,            Update_advance                    # Update spark advance
+21c0: 17,6d               vect  6d17,            UPd_KnkRet                        # Update Knock and Tip-in Retard (no-op in A9L)
+21c2: 8c,64               vect  648c,            Update_fans                       # Update electric cooling fans (not present in A9L)
+21c4: 91,61               vect  6191,            Upd_air_mgt                       # Update thermactor air
+21c6: b5,62               vect  62b5,            Upd_HiFan                         # Update high speed electric fan (not present in A9L)
+21c8: 35,63               vect  6335,            Upd_canpTm                        # Update Canister Purge timing
+21ca: 66,65               vect  6566,            Upd_Suprchrgr_Byp                 # Update supercharger bypass (not present in A9L)
+21cc: b0,58               vect  58b0,            Update_Idle                       # Update idle speed
+21ce: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+21d0: 7b,6a               vect  6a7b,            Upd_ShiftL                        # Update shift light (not present in A9L)
+21d2: dd,6a               vect  6add,            Upd_Adj_Shocks                    # (De)Activate adjustable shocks (not present in A9L)
+21d4: a1,65               vect  65a1,            Upd_Iacflg                        # Update Inlet Air Control (not present in A9L)
+21d6: 2e,73               vect  732e,            Cont_Self_Test
+21d8: 49,6e               vect  6e49,            Do_SelfTest                       # diagnostic Self Tests
+21da: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+
+################# List B - engine off self tests (and engine on cruise controls self test? )
+
+21dc: b1,84               vect  84b1,            Check_ConsoleD                    # check console, init RF0 regs
+21de: 86,37               vect  3786,            set_rpm_flgs                      # Set RPM Flags
+21e0: 2e,22               vect  222e,            Read_AD                           # Read AD channels to Table
+21e2: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+21e4: e4,3c               vect  3ce4,            Update_MPH                        # Update vehicle speed vals
+21e6: ac,3d               vect  3dac,            Update_rpm                        # Update RPM
+21e8: d4,65               vect  65d4,            Set_Timers
+21ea: fe,68               vect  68fe,            Update_timers                     # Update Timers
+21ec: 8f,84               vect  848f,            Set_ign_timers
+21ee: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+21f0: d7,4a               vect  4ad7,            Calc_Fuel
+21f2: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+21f4: e7,5e               vect  5ee7,            Upd_SCCS                          # Update Vehicle Speed Control
+21f6: 49,6e               vect  6e49,            Do_SelfTest                       # Diagnostic Self Tests
+21f8: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
+21fa: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+21fc: 74,21               vect  2174,            Set_Tasklist                      # Recheck list B
+
+######### List C - engine running self tests
+
+21fe: b1,84               vect  84b1,            Check_ConsoleD                    # Check console, init RF0 regs
+2200: 2e,22               vect  222e,            Read_AD                           # Read AD channels
+2202: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+2204: f3,37               vect  37f3,            Update_WOT                        # Update WOT flag
+2206: e4,3c               vect  3ce4,            Update_MPH                        # Update vehicle speed values
+2208: 52,58               vect  5852,            Update_dwell                      # Update Computer Controlled Dwell
+                                                                                   # (not present in A9L, routine can be deleted)
+220a: ac,3d               vect  3dac,            Update_rpm                        # Update RPM
+220c: d4,65               vect  65d4,            Set_Timers
+220e: fe,68               vect  68fe,            Update_timers                     # Update Timers
+2210: 8f,84               vect  848f,            Set_ign_timers
+2212: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel comsumption for DOL
+2214: 7c,3e               vect  3e7c,            Load_Calc
+2216: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+2218: 5b,4b               vect  4b5b,            Sub19                             # Something Injection ?
+221a: f4,4e               vect  4ef4,            Do_accelpump
+221c: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+221e: b0,58               vect  58b0,            Update_Idle                       # Ccheck idle speed?
+2220: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+2222: 3f,82               vect  823f,            CHk_HEGO                          # Check HEGO sensors
+2224: 28,82               vect  8228,            Sub115                            # Check brake and PS flags
+2226: 49,6e               vect  6e49,            Do_SelfTest                       # Ddiagnostic Self Tests
+2228: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
+222a: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+222c: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
+
+
+This can be cut down a bit to eliminate routines that don't apply to
+the A9L:
+
+
+####### Tasklist Subroutine Lists
+####### List A - normal operation - no self tests
+
+218a: b1,84               vect  84b1,            Check_ConsoleD                    # Check console, init RF0 regs
+218c: 5d,23               vect  235d,            check_KAM                         # Validate/initialise KAM
+218e: 86,37               vect  3786,            set_rpm_flgs                      # Set RPM Flags
+2190: 2e,22               vect  222e,            Read_AD                           # Read AD channels
+2192: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+2194: f3,37               vect  37f3,            Update_WOT                        # Update WOT flag
+2196: f4,4e               vect  4ef4,            Do_accelpump
+2198: 5a,3d               vect  3d5a,            Update_HWND                       # Update heated windshield flag
+219a: e4,3c               vect  3ce4,            Update_MPH                        # Update (MPH) vehicle speed values
+219c: ac,3d               vect  3dac,            Update_rpm                        # Update RPM?
+219e: dd,63               vect  63dd,            Update_AC                         # Update A/C clutch control, idle increment
+                                                                                   #  (can be bypassed if no A/C)
+21a0: d4,65               vect  65d4,            Set_Timers
+21a2: fe,68               vect  68fe,            Update_timers                     # Update Timers
+21a4: 8f,84               vect  848f,            Set_ign_timers
+21a6: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel consumption for DOL
+21a8: 7c,3e               vect  3e7c,            Load_Calc
+21aa: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+21ac: 41,41               vect  4141,            Check_spd_lim                     # Check for RPM and Speed limiters
+21ae: a1,41               vect  41a1,            Update_clolp                      # Update closed loop flags
+21b0: 00,47               vect  4700,            Adapt?                            # Adaptive something
+21b2: d7,4a               vect  4ad7,            Calc_Fuel                         # Background fuel calculation
+21b4: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+21b6: 36,51               vect  5136,            Calc_EVP                          # EVP something
+21b8: d9,54               vect  54d9,            Calc_EGR                          # EGR stuff - must follow Calc_EVP
+21ba: c3,55               vect  55c3,            Update_advance                    # Update spark advance
+21bc: 17,6d               vect  6d17,            UPd_KnkRet                        # Update Knock and Tip-in Retard (no-op in A9L)
+21be: 91,61               vect  6191,            Upd_air_mgt                       # Update thermactor air
+21c0: 35,63               vect  6335,            Upd_canpTm                        # Update Canister Purge timing
+21c2: b0,58               vect  58b0,            Update_Idle                       # Update idle speed
+21c4: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+21c6: 2e,73               vect  732e,            Cont_Self_Test
+21c8: 49,6e               vect  6e49,            Do_SelfTest                       # diagnostic Self Tests
+21ca: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21cc: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21ce: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21d0: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21d2: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21d4: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21d6: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21d8: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+21da: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
+
+################# List B - engine off self tests (and engine on cruise controls self test? )
+
+21dc: b1,84               vect  84b1,            Check_ConsoleD                    # check console, init RF0 regs
+21de: 86,37               vect  3786,            set_rpm_flgs                      # Set RPM Flags
+21e0: 2e,22               vect  222e,            Read_AD                           # Read AD channels to Table
+21e2: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+21e4: e4,3c               vect  3ce4,            Update_MPH                        # Update vehicle speed vals
+21e6: ac,3d               vect  3dac,            Update_rpm                        # Update RPM
+21e8: d4,65               vect  65d4,            Set_Timers
+21ea: fe,68               vect  68fe,            Update_timers                     # Update Timers
+21ec: 8f,84               vect  848f,            Set_ign_timers
+21ee: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+21f0: d7,4a               vect  4ad7,            Calc_Fuel
+21f2: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+21f4: e7,5e               vect  5ee7,            Upd_SCCS                          # Update Vehicle Speed Control
+21f6: 49,6e               vect  6e49,            Do_SelfTest                       # Diagnostic Self Tests
+21f8: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
+21fa: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+21fc: 74,21               vect  2174,            Set_Tasklist                      # Recheck list B
+
+######### List C - engine running self tests
+
+21fe: b1,84               vect  84b1,            Check_ConsoleD                    # Check console, init RF0 regs
+2200: 2e,22               vect  222e,            Read_AD                           # Read AD channels
+2202: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
+2204: f3,37               vect  37f3,            Update_WOT                        # Update WOT flag
+2206: e4,3c               vect  3ce4,            Update_MPH                        # Update vehicle speed values
+2208: ac,3d               vect  3dac,            Update_rpm                        # Update RPM
+220a: d4,65               vect  65d4,            Set_Timers
+220c: fe,68               vect  68fe,            Update_timers                     # Update Timers
+220e: 8f,84               vect  848f,            Set_ign_timers
+2210: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel comsumption for DOL
+2212: 7c,3e               vect  3e7c,            Load_Calc
+2214: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+2216: 5b,4b               vect  4b5b,            Sub19                             # Something Injection ?
+2218: f4,4e               vect  4ef4,            Do_accelpump
+221a: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+221c: b0,58               vect  58b0,            Update_Idle                       # Ccheck idle speed?
+221e: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+2220: 3f,82               vect  823f,            CHk_HEGO                          # Check HEGO sensors
+2222: 28,82               vect  8228,            Sub115                            # Check brake and PS flags
+2224: 49,6e               vect  6e49,            Do_SelfTest                       # Ddiagnostic Self Tests
+2226: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
+2228: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+222a: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
+222c: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
+
+
+Hex editor (ROM starts at 0x0000 instead of 0x2000):
+
+Is:
+
+0180:                                 B1 84  5D 23 52 58
+0190: 86 37 2E 22  4E 38 F3 37  F4 4E 5A 3D  E4 3C AC 3D
+01A0: DD 63 D4 65  FE 68 8F 84  CA 4C 7C 3E  30 85 BA 40
+01B0: 41 41 A1 41  00 47 D7 4A  EE 50 36 51  D9 54 C3 55
+01C0: 17 6D 8C 64  91 61 B5 62  35 63 66 65  B0 58 C4 5E
+01D0: 7B 6A DD 6A  A1 65 2E 73  49 6E 74 21  B1 84 86 37
+01E0: 2E 22 4E 38  E4 3C AC 3D  D4 65 FE 68  8F 84 BA 40
+01F0: D7 4A EE 50  E7 5E 49 6E  87 55 CA 63  74 21 B1 84
+0200: 2E 22 4E 38  F3 37 E4 3C  52 58 AC 3D  D4 65 FE 68
+0210: 8F 84 CA 4C  7C 3E BA 40  5B 4B F4 4E  EE 50 B0 58
+0220: C4 5E 3F 82  28 82 49 6E  87 55 CA 63  74 21 
+
+Becomes:
+
+0180:                                 B1 84  5D 23 86 37
+0190: 2E 22 4E 38  F3 37 F4 4E  5A 3D E4 3C  AC 3D DD 63
+01A0: D4 65 FE 68  8F 84 CA 4C  7C 3E BA 40  41 41 A1 41
+01B0: 00 47 D7 4A  EE 50 36 51  D9 54 C3 55  17 6D 91 61
+01C0: 35 63 B0 58  C4 5E 2E 73  49 6E 74 21  74 21 74 21
+01D0: 74 21 74 21  74 21 74 21  74 21 74 21  B1 84 86 37
+01E0: 2E 22 4E 38  E4 3C AC 3D  D4 65 FE 68  8F 84 BA 40
+01F0: D7 4A EE 50  E7 5E 49 6E  87 55 CA 63  74 21 B1 84
+0200: 2E 22 4E 38  F3 37 E4 3C  AC 3D D4 65  FE 68 8F 84
+0210: CA 4C 7C 3E  BA 40 5B 4B  F4 4E EE 50  B0 58 C4 5E
+0220: 3F 82 28 82  49 6E 87 55  CA 63 74 21  74 21 
+
+
+Rationale for the changes:
+
+The A9L EEC-IV is CPU bound at higher RPMs.  The background loop does
+a number of critical calculations, but at high RPMs it doesn't run
+often enough to keep up with a rapidly accelerating motor.  Anything
+that can be done to reduce the load will help.
+
+The background loop driver is 11 instructions, taking 15.2 us; plus
+the return from the called routine takes another 3.2 us, for a total
+of 18.4 us.  And that's if the called routine returns immediately -
+which it won't; there is always a runtime check for hardware we know
+statically isn't there.
+
+List A (the normal run mode list) shrinks by 8 entries.  That's over
+140 us per background loop.
+
+Since we're only moving entries around in a table, and removing the
+ones that do nothing, the risk of harm is very low.
+
+
+Additional optional changes:
+
+---
+
+PFE vs Sonic EGR: 
+
+Background routines at 0x384E (Update_AD) and 0x40BA (Update_EGR)
+start with conditional branch on EGR type.  Pointers to these could
+simply be replaced with 0x386a and 0x4107, respectively.  Small gain
+(avoids 1.8 us for bit conditional jump taken), but easy and risk
+free.

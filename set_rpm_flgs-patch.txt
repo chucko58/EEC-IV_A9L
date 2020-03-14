@@ -1,0 +1,156 @@
+Is:
+
+#################################################################
+# Set RPM Flags mode - cranking, underspeed. run etc
+# GUFB doc pp. 4-4, 4-5
+#################################################################
+
+  set_rpm_flgs:
+3786: 71,ef,e9            an2b  Re9,ef           Crnk_trans = 0;
+3789: 37,a1,21            jnb   B7,Ra1,37ad      if (CRKFLG == 0) goto 37ad;
+
+# CRKFLG was set at entry
+378c: 8b,fa,1a,ae         cmpw  Rae,[Rfa+1a]     
+3790: d1,14               jleu  37a6             if ((uns) N > NRUN)  {            # (225 RPM) 
+# N > NRUN
+3792: b1,08,14            ldb   R14,8            R14 = 8;
+3795: 9b,74,e7,14         cmpb  R14,[R74+e7]     
+3799: d9,09               jgtu  37a4             if ((uns) R14 <= ECTCNT)  {       # ECTCNT < 8 ?
+379b: 9b,fa,14,b4         cmpb  Rb4,[Rfa+14]     
+379f: d3,03               jltu  37a4             if ((uns) PIPCNT >= NCNT)  {
+# PIPCNT >= NCNT
+37a1: 71,7f,a1            an2b  Ra1,7f           CRKFLG = 0; } }                   # Clear CRKFLG if N > NRUN, ECTCNT <= 8, or PIPCNT > NCNT
+# ECTCNT < 8 or PIPCNT < NCNT
+37a4: 20,40               sjmp  37e6             goto 37e6; }
+
+# N <= NRUN
+37a6: 11,b4               clrb  Rb4              PIPCNT = 0;                       # RPM <= 225
+37a8: 71,ef,2f            an2b  R2f,ef           PTSCR = 0;
+37ab: 20,39               sjmp  37e6             goto 37e6;                        # set underspeed and exit
+
+# CRKFLG was not set at entry
+37ad: 11,b4               clrb  Rb4              PIPCNT = 0;
+37af: 8b,fa,1c,ae         cmpw  Rae,[Rfa+1c]     
+37b3: db,11               jgeu  37c6             if (N < NSTALL)  {
+37b5: 91,80,a1            orb   Ra1,80           CRKFLG = 1;                       # RPM < 50
+37b8: 91,10,e9            orb   Re9,10           Crnk_trans = 1;
+37bb: c7,74,e7,00         stb   R0,[R74+e7]      ECTCNT = 0;
+37bf: 01,ac               clrw  Rac              TCSTRL = 0, TCSTRT = 0;
+37c1: 71,ef,2f            an2b  R2f,ef           PTSCR = 0;                        # set cranking and other flags
+37c4: 20,20               sjmp  37e6             goto 37e6; }
+
+# N >= NSTALL
+37c6: a3,fa,16,30         ldw   R30,[Rfa+16]     R30 = UNRPM;                      # cranking not set, RPM >= 50
+37ca: 88,ae,30            cmpw  R30,Rae          
+37cd: d1,02               jleu  37d1             if ((uns) UNRPM <= N) goto 37d1;
+37cf: 20,15               sjmp  37e6             goto 37e6;                        # RPM < 200, Underspeed limit low, set underspeed
+
+# N >= UNRPM
+37d1: 67,fa,18,30         ad2w  R30,[Rfa+18]     R30 += UNRPMH;                    # R30 = UNRPM + UNRPMH
+37d5: 88,ae,30            cmpw  R30,Rae          
+37d8: db,0a               jgeu  37e4             if (R30 >= N)  {                  # RPM < 300, Underspeed limit high, exit
+
+# N > UNRPM + UNRPMH
+37da: fa                  di                     disable ints;
+37db: ff                  nop                    
+37dc: 32,a1,05            jnb   B2,Ra1,37e4      if (UNDSP == 1)  {
+37df: 71,fb,a1            an2b  Ra1,fb           UNDSP = 0;                        # RPM > 300 clear underspeed if set 
+37e2: 20,0a               sjmp  37ee             goto 37ee; } }
+
+# 
+37e4: fb                  ei                     enable ints;
+37e5: f0                  ret                    return;
+#
+# jump here from 37cf (N < UNRPM), 37c4 (CRKFLG = 1), 37b3 (N >= NSTALL), 37a4 (ECTCNT < 8 || PIPCNT < NCNT)
+#
+37e6: fa                  di                     disable ints;
+37e7: ff                  nop                    
+37e8: 3a,a1,06            jb    B2,Ra1,37f1      if (UNDSP == 0)  {
+37eb: 91,04,a1            orb   Ra1,4            UNDSP = 1;                        # set underspeed if necessary
+#
+# Jump here from 37e2 (UNDSP 1 -> 0 transition)
+37ee: 91,02,2d            orb   R2d,2            Undsp_trans = 1; }                # Underspeed transition
+#
+37f1: fb                  ei                     enable ints;
+37f2: f0                  ret                    return;
+
+
+Can we reorganize this to speed up the normal running case, and maybe even shorten it??
+
+Let's try:
+
+3786: 71,ef,e9            an2b  Re9,ef           Crnk_trans = 0;
+3789: 3f,a1,21            jb    B7,Ra1,Cranking  if (CRKFLG == 1) goto Cranking;
+#
+# CRKFLG was not set at entry
+378c: 11,b4               clrb  Rb4              PIPCNT = 0;                       # is this redundant?
+378e: 8b,fa,1c,ae         cmpw  Rae,[Rfa+1c]     
+3792: db,11               jltu  Stalling         if (N < NSTALL) goto Stalling;
+#
+# N >= NSTALL
+3794: a3,fa,16,30         ldw   R30,[Rfa+16]     R30 = UNRPM;                      # cranking not set, RPM >= 50
+3798: 88,ae,30            cmpw  R30,Rae          
+379b: d1,02               jgtu  Set_Undsp        if ((uns) UNRPM > N) goto Set_Undsp;
+#
+# N >= UNRPM
+379d: 67,fa,18,30         ad2w  R30,[Rfa+18]     R30 += UNRPMH;                    # R30 = UNRPM + UNRPMH
+37a1: 88,ae,30            cmpw  R30,Rae          
+37a4: db,0a               jgeu  set_rpm_flgs_exit if (R30 >= N) return;            # RPM < 300, Underspeed limit high, exit
+#
+# N > UNRPM + UNRPMH
+37a6: fa                  di                     disable ints;
+37a7: ff                  nop                    
+37a8: 32,a1,05            jnb   B2,Ra1,ei_exit  if (UNDSP == 0) enable interrupts; return;
+#
+# Clear UNSPD
+37ab: 71,fb,a1            an2b  Ra1,fb           UNDSP = 0;                        # RPM > 300 clear underspeed if set 
+37ae: 20,0a               sjmp  Set_Undsp_trans  goto Set_Undsp_Trans;
+#
+# CRKFLG was set at entry
+  Cranking:
+37b0: 8b,fa,1a,ae         cmpw  Rae,[Rfa+1a]     
+37b4: d1,14               jleu  Not_running      if ((uns) N <= NRUN) goto Not_running; # (225 RPM) 
+# N > NRUN
+37b6: b1,08,14            ldb   R14,8            R14 = 8;
+37b9: 9b,74,e7,14         cmpb  R14,[R74+e7]     
+37bd: d9,09               jgtu  Set_Undsp        if ((uns) 8 > ECTCNT) goto Set_Undsp; # ECTCNT < 8 ?
+37bf: 9b,fa,14,b4         cmpb  Rb4,[Rfa+14]     
+37c3: d3,03               jltu  Set_Undsp        if ((uns) PIPCNT < NCNT) goto Set_Undsp;
+#
+# N > NRUN, ECTCNT >= 8, and PIPCNT >= NCNT; can clear CRKFLG
+37c5: 71,7f,a1            an2b  Ra1,7f           CRKFLG = 0;
+37c8: 20,40               sjmp  Set_Undsp        goto Set_Undsp;
+
+# N <= NRUN
+  Not_running:
+37ca: 11,b4               clrb  Rb4              PIPCNT = 0;                       # Reset PIPs-since-exiting-crank counter
+37cf: 20,39               sjmp  Set_Undsp        goto Clear_Ptscr;                 # clear PTSCR, set UNDSP, and exit
+
+# N < NSTALL
+  Stalling:
+37d1: 91,80,a1            orb   Ra1,80           CRKFLG = 1;                       # Transition into cranking
+37d4: 91,10,e9            orb   Re9,10           Crnk_trans = 1;
+37d7: c7,74,e7,00         stb   R0,[R74+e7]      ECTCNT = 0;                       # Reset ECT startup read counter
+37db: 01,ac               clrw  Rac              TCSTRL = 0, TCSTRT = 0;           # and clear startup ECT avg
+  Clear_Ptscr:
+37dd: 71,ef,2f            an2b  R2f,ef           PTSCR = 0;                        # Clear part-throttle-since-exiting-crank flag
+#
+  Set_Undsp:
+37e0: fa                  di                     disable ints;
+37e1: ff                  nop                    
+37e2: 3a,a1,06            jb    B2,Ra1,ei_exit   if (UNDSP == 0) enable interrupts; return; 
+37e5: 91,04,a1            orb   Ra1,4            UNDSP = 1;                        # set underspeed if necessary
+#
+  Set_Undsp_Trans:
+37e8: 91,02,2d            orb   R2d,2            Undsp_trans = 1;                  # Flag a transition into or out of underspeed
+#
+# Jump here from 37a8 (UNDSP == 0, i.e. normal operation)
+ ei_exit:
+37eb: fb                  ei                     enable ints;
+ set_rpm_flgs_exit:
+37ec: f0                  ret                    return;
+
+This version has only one conditional jump taken in the time critical
+running case.  In the CRKFLG set case, several conditional branches to
+a jump were eliminated.
+

@@ -1,0 +1,177 @@
+This is not one patch, but a series of optional patches.
+
+The HSO #1 interrupt handler is the single most frequently executed
+piece of code in the EEC-IV, at least until the engine hits 7500 RPM!
+Therefore every microsecond gained translates into 1 millisecond that
+can be freed up for other tasks.  There is a LOT of bit-banging IO
+going on here, including the Self-Test Output (STO) and Malfunction
+Indicator Light (MIL), as well as pulse-width modulation (PWM) in
+firmware for the EGR Vacuum Regulator (EVR) and the Idle Speed Control
+(ISC).
+
+The most likely candidates for removal are the Data Output Link (DOL)
+and Vehicle Speed Control (VSC) routines.
+
+DOL was a pulse-at-a-time one-wire interface to the Tripminder, a
+low-tech trip computer that read instantaneous and average fuel
+mileage.  I believe it was discontinued for the 1987 model year.  This
+code takes 3.6 or 5.0 us to execute. A short jump instruction can
+replace it at 1.6 us, saving a minimum of 2.0 us.  Not much, but it's
+a no-brainer with no risk to speak of.
+
+VSC in firmware may have been used on other models, but the Fox
+Mustangs used an external analog speed control amplifier.  Therefore
+this code can simply be bypassed with a jump instruction.  This
+doesn't save us much; this chunk of code already starts with a DJNZ,
+which will take the branch in the no-VSC case. A short jump
+instruction only takes one CPU state (0.2 us) less than the DJNZ, a
+pretty minimal gain; probably not worth the effort.
+
+But as the MAF update code immediately precedes the unused VSC
+routine, another possibility is to replace the VSC code with an inline
+copy of the MAF calculation code at MAF_rd_calc!
+
+This saves a CALL/RET pair (2.6 + 2.4 = 5.0 us) _plus_ a JNB (1.8 us).
+And by being clever with the call to Integrate_MAF(), we save a
+further 1.0 us, for a total savings of 7.8 us.  Now we're getting
+somewhere.
+
+For track-only cars, the EVR and Canister Purge code can also be
+bypassed.
+
+
+DOL output patch:
+
+Change the CMPW RC6,1 instruction at 0x342F to a SJMP 3440.
+
+Is:
+
+342F: 89
+3430: 01
+
+Becomes:
+
+342F: 20
+3430: 0F
+
+
+EVR output patch:
+
+Change the CMPB RD3,R0 instruction at 0x33e7 to a SJMP 3417.
+
+Is:
+
+33E7: 98 00
+
+Becomes:
+
+33E7: 20 2E
+
+
+Canister purge patch:
+
+Change the SB3B R50,R8D,[R72+0xAB] instruction at 3572 to a JMP 25F4.
+
+Is:
+
+3572: 5B 72 AB
+
+Becomes:
+
+3572: E7 7F F0
+
+
+Inlining MAF_rd_calc:
+
+Code is:
+
+#
+# Update MAF
+#
+352e: 71,df,2f            an2b  R2f,df           Maf_pip = 0;                      # indicates 1ms timer interrupt
+3531: 3f,a1,0d            jb    B7,Ra1,3541      if (CRKFLG == 0)  {               # MAF ignored during crank
+3534: 37,09,03            jnb   B7,R9,353a       if (HSI0_Int_Pend == 0) goto 353a; # jmp if no PIP interrupt in the pipeline
+3537: 38,0b,07            jb    B0,Rb,3541       if (B0_HSI_Sample == 0)  {        # Pending PIP interrupt is PIP low
+#
+353a: a3,74,06,52         ldw   R52,[R74+6]      R52 = Last_HSO;                   # Do the 1ms integration
+353e: ef,e8,f7            call  2d29             MAF_rd_calc(); } }
+#
+# Vehicle Speed Control system (VSC)
+# Not present on A9L
+#
+3541: e0,9b,2b            djnz  R9b,356f         Vsc_count--;
+                                                 if (Vsc_count != 0) goto 356f;    # VSC Count
+3544: 33,c4,0c            jnb   B3,Rc4,3553      if (Vsc_state == 1)  {
+3547: b3,74,3a,9b         ldb   R9b,[R74+3a]     Vsc_count = VSC_OFF_COUNT;
+354b: 71,fe,46            an2b  R46,fe           SCVAC = 0;                        # Vehicle Speed Control Vacuum Off
+354e: 91,10,46            orb   R46,10           SCVNT = 1;                        # Vehicle Speed Control Vent On
+3551: 20,0f               sjmp  3562             goto 3562; }
+#
+3553: b3,74,3b,9b         ldb   R9b,[R74+3b]     Vsc_count = VSC_ON_COUNT;
+3557: 36,c4,05            jnb   B6,Rc4,355f      if (Vsc_vac_active == 1)  {       # VSC vacuum active
+355a: 95,01,46            xorb  R46,1            SCVAC ^= 1;                       # Toggle Vacuum
+355d: 20,03               sjmp  3562             goto 3562; }
+#
+355f: 95,10,46            xorb  R46,10           SCVNT ^= 1;                       # Toggle Vent
+#
+3562: 95,08,c4            xorb  Rc4,8            Vsc_state ^= 1;                   # Toggle Vsc_state
+3565: 98,9b,00            cmpb  R0,R9b           
+3568: d7,05               jne   356f             if (0 == Vsc_count)  {
+356a: b1,0a,9b            ldb   R9b,a            Vsc_count = a;
+356d: 27,e8               sjmp  3557             goto 3557; } }                    # Loop back
+
+Becomes:
+
+#
+# Update MAF
+#
+352e: 71,df,2f            an2b  R2f,df           Maf_pip = 0;                      # indicates 1ms timer interrupt
+3531: 3f,a1,3b            jb    B7,Ra1,356f      if (CRKFLG == 0)  {               # MAF ignored during crank
+3534: 37,09,03            jnb   B7,R9,353a       if (HSI0_Int_Pend == 0) goto 353a; # jmp if no PIP interrupt in the pipeline
+3537: 38,0b,35            jb    B0,Rb,356f       if (B0_HSI_Sample == 0)  {        # Pending PIP interrupt is PIP low
+353a: a3,74,06,52         ldw   R52,[R74+6]      R52 = Last_HSO;                   # Do the 1ms integration
+#
+# The guts of MAF_rd_calc follow
+#
+353e: 33,0a,fd            jnb   B3,Ra,2d29       if (AD_Ready == 0) goto 353e;     # spin wait for A/D conversion complete
+3541: 51,f0,04,54         an3b  R54,R4,f0        R54 = AD_Low & f0;                # mask off low bits (channel #)
+3545: b0,05,55            ldb   R55,R5           R55 = AD_High;
+3548: c3,72,a4,54         stw   R54,[R72+a4]     IMAF = R54;                       # save Raw MAF A/D reading
+354c: 4b,76,ae,52,50      sb3w  R50,R52,[R76+ae] R50 = R52 - MAF_TIME;
+3551: c3,76,ae,52         stw   R52,[R76+ae]     MAF_TIME = R52;
+3555: c3,76,b8,50         stw   R50,[R76+b8]     INTM = R50;
+#
+# This is a speed hack. Instead of calling Integrate_MAF and jumping when we get back,
+# push the return address and jump to the routine.
+# CALL + SJMP = 13 + 8 states = 4.2 us
+# PUSH + JMP  = 8 + 8 states = 3.2 us
+#
+3559: c9,6f,35            push  356f             push return address
+355c: e7,68,f8            jmp   2dc7             goto Integrate_MAF();             # MAF calibrate/lookup
+#
+# This is here to catch any misdirected jumps and reset the EEC
+#
+355f: ff                  nop
+3560: ff,ff,ff,ff         nop, nop, nop, nop
+3564: ff,ff,ff,ff         nop, nop, nop, nop
+3568: ff,ff,ff,ff         nop, nop, nop, nop
+356c: e7,91,ea            jmp   RESET                                              # OOPS
+#
+
+
+In the bin file (- 0x2000 offset), is:
+
+1520:                                              71 DF
+1530: 2F 3F A1 0D  37 09 03 38  0B 07 A3 74  06 52 EF E8
+1540: F7 E0 9B 2B  33 C4 0C B3  74 3A 9B 71  FE 46 91 10
+1550: 46 20 0F B3  74 3B 9B 36  C4 05 95 01  46 20 03 95
+1560: 10 46 95 08  C4 98 9B 00  D7 05 B1 0A  9B 27 E8
+
+Becomes:
+
+1520:                                              71 DF
+1530: 2F 3F A1 3B  37 09 03 38  0B 35 A3 74  06 52 33 0A
+1540: FD 51 F0 04  54 B0 05 55  C3 72 A4 54  4B 76 AE 52
+1550: 50 C3 76 AE  52 C3 76 B8  50 C9 6F 35  E7 68 F8 FF
+1560: FF FF FF FF  FF FF FF FF  FF FF FF FF  E7 91 EA
+

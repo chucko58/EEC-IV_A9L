@@ -1,0 +1,321 @@
+Existing:
+
+######## PIP Low handler ####### 
+#
+# R50-52 (3 bytes): Interval since last PIP low-high transition
+# R54 (word): MNPIP
+#
+291a: 34,2d,0c            jnb   B4,R2d,2929      if (FIRST_PIP == 1)  {
+291d: 08,02,54            shrw  R54,2            R54 /= 4;
+2920: 88,50,54            cmpw  R54,R50          
+2923: d1,04               jleu  2929             if ((uns) R54 > R50 )  {
+2925: 91,01,90            orb   R90,1            Last_HSI |= 1;                    # Too soon to be valid, return
+2928: f0                  ret                    return; } }
+#
+2929: a0,ba,58            ldw   R58,Rba          R58 = DT12S;                      # Most recent PIP cycle time
+292c: 08,01,58            shrw  R58,1            R58 /= 2;                         # half (for equal Hi/Lo)
+292f: c3,76,bc,be         stw   Rbe,[R76+bc]     PHFDLT = HFDLTA;
+2933: a0,50,be            ldw   Rbe,R50          HFDLTA = R50;                     # PIP hi-lo time delta (Pulsewidth)
+2936: 9b,fe,0c,00         cmpb  R0,[Rfe+c]       
+293a: d7,62               jne   299e             if (0 == HP_CID)  {               # Skip this if Cyl ID sensor present (not present in A9L)
+#
+# Part of MKAY/SIGKAL Calculations (for signature PIP)
+# GUFB p. 7-19
+#
+# R50-52 (3 bytes): Interval since last PIP low-high transition
+# R54 (word): MNPIP
+# R58 (word): DT12S/2 (half most recent PIP high-high cycle time)
+#
+293c: 71,fd,eb            an2b  Reb,fd           SIGPIP = 0;
+293f: 3a,a1,57            jb    B2,Ra1,2999      if (UNDSP == 1) goto 2999;
+2942: 48,be,58,52         sb3w  R52,R58,Rbe      R52 = R58 - HFDLTA;               # = PIP Hi-Hi time/2 - Pip Hi-lo time
+2946: da,48               jle   2990             if (R52 <= 0) goto 2990;          # should be zero at steady state
+2948: 01,50               clrw  R50              R50 = 0;
+294a: 8c,58,50            divw  R50,R58          R51:R50 = R53:R50 / R59:R58;      # top byte PIPHi-Hi/Pip Hi-Lo
+294d: 8b,fe,0e,50         cmpw  R50,[Rfe+e]      
+2951: d1,3d               jleu  2990             if ((uns) R50 <= MHPFD) goto 2990; # MHPFD = Signature PIP duty cycle * 65536
+2953: 91,02,eb            orb   Reb,2            SIGPIP = 1;                       # This is Cyl 1 - narrow blade/slot
+2956: 9b,fc,2a,d1         cmpb  Rd1,[Rfc+2a]     
+295a: df,02               je    295e             if (SYNCTR == NUMCYL) goto 295e;
+295c: 20,3b               sjmp  2999             goto 2999;
+#
+# Got cyl #1 when expected, we're in sync
+# R58 (word): DT12S/2
+#
+295e: 91,50,2e            orb   R2e,50           SYNC_UP_FUEL = 1;
+                                                 SYNFLG = 1;                       # OK - cyl 1 expected do/keep SYNC 
+2961: a3,76,c2,52         ldw   R52,[R76+c2]     R52 = SIGDLT;
+2965: c3,76,c4,52         stw   R52,[R76+c4]     PSGDLT = R52;
+2969: c3,76,c2,be         stw   Rbe,[R76+c2]     SIGDLT = HFDLTA;
+296d: a3,76,c0,50         ldw   R50,[R76+c0]     R50 = SIGKAL;
+2971: 6c,be,50            ml2w  R50,Rbe          R53:R50 = SIGKAL * HFDLTA;
+2974: 8c,c0,50            divw  R50,Rc0          R51:R50 = SIGKAL * HFDLTA / MKAY;
+2977: dd,05               jv    297e             if (OVF == 0)  {
+2979: c0,be,50            stw   R50,Rbe          HFDLTA = R50;
+297c: 20,03               sjmp  2981             goto 2981; }
+#
+297e: a0,58,be            ldw   Rbe,R58          HFDLTA = R58;                     # Clip HFDLTA to DT12S/2
+#
+2981: a3,fc,2e,50         ldw   R50,[Rfc+2e]     R50 = PIPOUT;
+2985: 8b,fc,2a,50         cmpw  R50,[Rfc+2a]     
+2989: df,03               je    298e             if (PIPOUT != NUMCYL)  {          # # of cylinders x 0x20
+298b: 71,ef,2e            an2b  R2e,ef           SYNC_UP_FUEL = 0; }
+#
+298e: 11,d1               clrb  Rd1              SYNCTR = 0;
+#
+2990: ac,d1,58            ldzbw R58,Rd1          R58 = (uns)SYNCTR;
+2993: 8b,fc,2a,58         cmpw  R58,[Rfc+2a]     
+2997: d3,05               jltu  299e             if ((uns) R58 >= NUMCYL)  {
+#
+# Jump here from 293f, 295c
+#
+# Not in sync
+#
+2999: 11,d1               clrb  Rd1              SYNCTR = 0;
+299b: 71,2f,2e            an2b  R2e,2f           SYNC_UP_FUEL = 0;
+                                                 SYNFLG = 0;
+                                                 FUEL_IN_SYNC = 0; } }             # UNSYNC  
+#### end of signature PIP processing
+#
+299e: c9,9f,6c            push  6c9f             push(Sub38);                      # knock detection (returns immediately if KIHP == 0)
+29a1: c9,c8,2f            push  2fc8             push(Sub5);                       #
+29a4: 9b,f8,19,00         cmpb  R0,[Rf8+19]      
+29a8: df,01               je    29ab             if (0 != HP_HIDRES)  {            # HDRES not present in A9L
+29aa: f0                  ret                    return; }                         # actually call Sub5(); call Sub38(); return; if HDRES present
+#
+# Logic below is for non-HIDRES
+#
+29ab: a1,9e,22,92         ldw   R92,229e         TPtr = 229e;                      # Spout Off command ?
+29af: 32,a1,0d            jnb   B2,Ra1,29bf      if (UNDSP == 1)  {
+#
+# Underspeed
+29b2: 31,2d,04            jnb   B1,R2d,29b9      if (Undsp_trans == 1)  {          # just entered underspeed
+#
+# Jump here from 29c8 (Not underspeed, just transitioned)
+29b5: 71,fd,2d            an2b  R2d,fd           Undsp_trans = 0;                  # Transition complete
+29b8: f0                  ret                    return; }                         # actually call Sub5(); call Sub38(); return;
+#
+# Jump here from 29b2 if underspeed and NOT transitioned 
+# Jump here from 29ca if transitioned OUT of underspeed and Pip_double == 0
+# R92 (TPtr) = 229e, SPOUT Off command
+29b9: 91,08,4c            orb   R4c,8            Immediate = 1;
+29bc: e7,fe,f9            jump  23bd             goto Send_HSO_Cmd; }              # send HSO command NOW
+                                                                                   # then call Sub5(); call Sub38(); return;
+#
+# Not underspeed
+29bf: 30,4f,08            jnb   B0,R4f,29ca      if (Pip_double == 1)  {
+29c2: a1,96,22,92         ldw   R92,2296         TPtr = 2296;                      # Spout On command ?
+29c6: 28,84               scall 2a4c             Spark_calc();
+29c8: 27,eb               sjmp  29b5             goto 29b5; }                      # Clear Undsp_trans and exit
+#
+29ca: 39,2d,ec            jb    B1,R2d,29b9      if (Undsp_trans == 1) goto 29b9;  # jump if transitioned out of underspeed
+29cd: f0                  ret                    return;                           # actually call Sub5(); call Sub38(); return;
+
+
+Proposed patches:
+
+The "nibbling around the edges" approach -
+
+# *** begin change #1 ***
+2936: 20,04               sjmp  293c                                               # Skip over deleted instructions
+2938: ff                  nop
+2939: e7,c4,f6            jump  RESET                                              # If we get here, abort
+# *** end change #1 ***
+
+Change #1 nets us 2.2 us per call, simply by omitting the
+hardware-present test.
+
+# *** begin change #2 ***
+299e: c9,c8,2f            push  2fc8             push(Sub5);                       # "return" to Sub5
+29a1: 20,08               sjmp  29ab                                               # Skip over deleted instructions
+29a3: ff                  nop
+29a4: ff                  nop
+29a5: ff                  nop
+29a6: ff                  nop
+29a7: ff                  nop
+29a8: e7,55,f6            jump RESET                                               # we screwed up, blow up
+# *** end change #2 ***
+
+Here we omit a PUSH instruction (and subsequent subroutine call) and a
+hardware-present test.  The deleted PUSH saves 1.6 us (plus 5.4 us
+spent in Sub38), the omission of the test another 2.2, for a total of
+9.2 us here.
+
+
+The "screw it, let's look for some more speed" approach -
+
+Rewrite the routine to compress out the unused code rather than
+jumping over it.
+
+# *** begin revised routine ***
+######## PIP Low handler ####### 
+#
+# R50-52 (3 bytes): Interval since last PIP low-high transition
+# R54 (word): MNPIP
+#
+291a: 34,2d,0c            jnb   B4,R2d,2929      if (FIRST_PIP == 1)  {
+291d: 08,02,54            shrw  R54,2            R54 /= 4;                         # First PIP seen, normal path
+2920: 88,50,54            cmpw  R54,R50          
+2923: d1,04               jleu  2929             if ((uns) MNPIP/4 > R50 )  {
+2925: 91,01,90            orb   R90,1            Last_HSI |= 1;                    # Too soon to be valid, return
+2928: f0                  ret                    return; } }
+#
+# jump here from 291a (!FIRST_PIP), 2923 (MINPIP/4 <= R50)
+2929: a0,ba,58            ldw   R58,Rba          R58 = DT12S;                      # Most recent PIP cycle time
+292c: 08,01,58            shrw  R58,1            R58 /= 2;                         # half (for equal Hi/Lo)
+292f: c3,76,bc,be         stw   Rbe,[R76+bc]     PHFDLT = HFDLTA;
+2933: a0,50,be            ldw   Rbe,R50          HFDLTA = R50;                     # PIP hi-lo time delta (Pulsewidth)
+#
+# Part of MKAY/SIGKAL Calculations (for signature PIP)
+# GUFB p. 7-19
+#
+# R50-52 (3 bytes): Interval since last PIP low-high transition
+# R54 (word): MNPIP
+# R58 (word): DT12S/2 (half most recent PIP high-high cycle time)
+#
+2936: 71,fd,eb            an2b  Reb,fd           SIGPIP = 0;
+2939: 3a,a1,53            jb    B2,Ra1,298f      if (UNDSP == 1) goto 298f;
+293c: 48,be,58,52         sb3w  R52,R58,Rbe      R52 = DT12S/2 - HFDLTA;           # = PIP Hi-Hi time/2 - Pip Hi-lo time
+2940: da,44               jle   2986             if (R52 <= 0) goto 2986;          # Jump if duty cycle >= 50% (not signature PIP)
+2942: 01,50               clrw  R50              R50 = 0;
+2944: 8c,58,50            divw  R50,R58          R51:R50 = R53:R50 / R59:R58;      # R50 = 65536 * (DT12S/2 - HFDLTA) / DT12S/2 
+2947: 8b,fe,0e,50         cmpw  R50,[Rfe+e]                                        # MHPFD = Signature PIP duty cycle * 65536
+294b: d1,39               jleu  2986             if ((uns) R50 <= MHPFD) goto 2986;
+294d: 91,02,eb            orb   Reb,2            SIGPIP = 1;                       # This is Cyl 1 - narrow blade/slot
+2950: 9b,fc,2a,d1         cmpb  Rd1,[Rfc+2a]     
+2954: d7,39               jne   298f             if (SYNCTR != NUMCYL) goto 298f;  # Jump if not in sync
+#
+# Got cyl #1 when expected, we're in sync
+# R58 (word): DT12S/2
+#
+2956: 91,50,2e            orb   R2e,50           SYNC_UP_FUEL = 1;
+                                                 SYNFLG = 1;                       # OK - cyl 1 expected do/keep SYNC 
+2959: a3,76,c2,52         ldw   R52,[R76+c2]     R52 = SIGDLT;
+295d: c3,76,c4,52         stw   R52,[R76+c4]     PSGDLT = R52;
+2961: c3,76,c2,be         stw   Rbe,[R76+c2]     SIGDLT = HFDLTA;
+2965: a3,76,c0,50         ldw   R50,[R76+c0]     R50 = SIGKAL;
+2969: 6c,be,50            ml2w  R50,Rbe          R53:R50 = SIGKAL * HFDLTA;
+296c: 8c,c0,50            divw  R50,Rc0          R51:R50 = SIGKAL * HFDLTA / MKAY;
+296f: dd,05               jv    2974             if (OVF == 0)  {
+2971: c0,be,50            stw   R50,Rbe          HFDLTA = R50;
+2974: 20,03               sjmp  2979             goto 2977; }
+#
+# Divide overflowed
+2976: a0,58,be            ldw   Rbe,R58          HFDLTA = R58;                     # Clip HFDLTA to DT12S/2
+#
+2979: a3,fc,2e,50         ldw   R50,[Rfc+2e]     R50 = PIPOUT;
+297d: 8b,fc,2a,50         cmpw  R50,[Rfc+2a]     
+2981: df,03               je    2986             if (PIPOUT != NUMCYL)  {          # # of cylinders x 0x20
+2983: 71,ef,2e            an2b  R2e,ef           SYNC_UP_FUEL = 0; }
+#
+2986: 11,d1               clrb  Rd1              SYNCTR = 0;
+#
+# Jump here from 2940 (duty cycle >= 50%), 294b (not signature PIP)
+#
+2988: ac,d1,58            ldzbw R58,Rd1          R58 = (uns)SYNCTR;
+298b: 8b,fc,2a,58         cmpw  R58,[Rfc+2a]     
+298f: d3,05               jltu  2996             if ((uns) SYNCTR >= NUMCYL)  {
+#
+# Not in sync
+# Jump here from 293f (UNDSP == 1), 295c (SYNCTR != NUMCYL)
+#
+2991: 11,d1               clrb  Rd1              SYNCTR = 0;
+2993: 71,2f,2e            an2b  R2e,2f           SYNC_UP_FUEL = 0;
+                                                 SYNFLG = 0;
+                                                 FUEL_IN_SYNC = 0; } }             # UNSYNC  
+#### end of signature PIP processing
+#
+# Jump here from 298d (SYNCTR < NUMCYL)
+#
+2996: c9,c8,2f            push  2fc8             push(Sub5);                       #
+2999: a1,9e,22,92         ldw   R92,229e         TPtr = 229e;                      # Spout Off command ?
+299d: 3a,a1,11            jb    B2,Ra1,29b1      if (UNDSP == 0)  {
+#
+# Not underspeed
+29a0: 38,4f,04            jb    B0,R4f,29a7      if (Pip_double == 0)  {
+#
+# Single_edge (rising edge) mode - high RPM (critical path), crank, or just out of underspeed
+29a3: 39,2d,0e            jb    B1,R2d,29b4      if (Undsp_trans == 1) goto 29b2;  # jump if transitioned out of underspeed
+29a6: f0                  ret                    return;                           # actually call Sub5(); return;
+#
+# Dual_edge (falling edge) mode - not high RPM (most likely path)
+29a7: a1,96,22,92         ldw   R92,2296         TPtr = 2296;                      # Spout On command ?
+29ab: 28,9f               scall 2a4c             Spark_calc();
+#
+# Jump here from 29af if transitioned into underspeed
+29ad: 71,fd,2d            an2b  R2d,fd           Undsp_trans = 0;                  # Transition complete
+29b0: f0                  ret                    return; }                         # actually call Sub5(); return;
+#
+# Underspeed
+29b1: 31,2d,f9            jb    B1,R2d,29ad      if (Undsp_trans == 0)  {
+#
+# Fall through if underspeed and NOT transitioned
+# Jump here from 29a1 if transitioned OUT of underspeed and Pip_double == 0
+# R92 (TPtr) = 229e, SPOUT Off command
+29b4: 91,08,4c            orb   R4c,8            Immediate = 1;
+29b7: e7,03,fa            jump  23bd             goto Send_HSO_Cmd; }              # send HSO command NOW
+                                                                                   # then call Sub5(); return;
+
+29ba: ff                  nop                                                        
+29bb: ff                  nop                                                        
+29bc: ff                  nop                                                        
+29bd: ff                  nop                                                        
+29be: ff                  nop                                                        
+29bf: ff                  nop                                                        
+29c0: ff                  nop                                                        
+29c1: ff                  nop                                                        
+29c2: ff                  nop                                                        
+29c3: ff                  nop                                                        
+29c4: ff                  nop                                                        
+29c5: ff                  nop                                                        
+29c6: ff                  nop                                                        
+29c7: ff                  nop                                                        
+29c8: ff                  nop                                                        
+29c9: ff                  nop                                                        
+29ca: ff                  nop                                                        
+29cb: e7,32,f6            jump  2000             goto RESET;
+
+# *** end revised routine *** 
+
+
+Is:
+
+0910:                                 34 2D  0C 08 02 54
+0920: 88 50 54 D1  04 91 01 90  F0 A0 BA 58  08 01 58 C3
+0930: 76 BC BE A0  50 BE 9B FE  0C 00 D7 62  71 FD EB 3A
+0940: A1 57 48 BE  58 52 DA 48  01 50 8C 58  50 8B FE 0E
+0950: 50 D1 3D 91  02 EB 9B FC  2A D1 DF 02  20 3B 91 50
+0960: 2E A3 76 C2  52 C3 76 C4  52 C3 76 C2  BE A3 76 C0
+0970: 50 6C BE 50  8C C0 50 DD  05 C0 BE 50  20 03 A0 58
+0980: BE A3 FC 2E  50 8B FC 2A  50 DF 03 71  EF 2E 11 D1
+0990: AC D1 58 8B  FC 2A 58 D3  05 11 D1 71  2F 2E C9 9F
+09A0: 6C C9 C8 2F  9B F8 19 00  DF 01 F0 A1  9E 22 92 32
+09B0: A1 0D 31 2D  04 71 FD 2D  F0 91 08 4C  E7 FE F9 30
+09C0: 4F 08 A1 96  22 92 28 84  27 EB 39 2D  EC F0
+
+Becomes:
+
+0910:                                 34 2D  0C 08 02 54
+0920: 88 50 54 D1  04 91 01 90  F0 A0 BA 58  08 01 58 C3
+0930: 76 BC BE A0  50 BE 71 FD  EB 3A A1 53  48 BE 58 52
+0940: DA 44 01 50  8C 58 50 8B  FE 0E 50 D1  39 91 02 EB
+0950: 9B FC 2A D1  D7 39 91 50  2E A3 76 C2  52 C3 76 C4
+0960: 52 C3 76 C2  BE A3 76 C0  50 6C BE 50  8C C0 50 DD
+0970: 05 C0 BE 50  20 03 A0 58  BE A3 FC 2E  50 8B FC 2A
+0980: 50 DF 03 71  3F 2E 11 D1  AC D1 58 8B  FC 2A 58 D3
+0990: 05 11 D1 71  2F 2E C9 C8  2F A1 9E 22  92 3A A1 11
+09A0: 38 4F 04 39  2D 0E F0 A1  96 22 92 28  9F 71 FD 2D
+09B0: F0 31 2D F9  91 08 4C E7  03 FA FF FF  FF FF FF FF  
+09C0: FF FF FF FF  FF FF FF FF  FF FF FF E7  32 F6
+
+Rationale:
+
+There are two explicit locations in this routine, and at least one
+implicit one in a called function, where the existence of non-Fox
+hardware is tested.  This routine is used 4 times per revolution.  So
+even small reductions add up at high RPM.
+
+The patched version simply bypasses the tests and the called function.
+
+The rewritten version eliminates the unneded logic, and straight-lines
+the high-speed logic after the signature PIP processing as well.

@@ -1,0 +1,185 @@
+--- TO BE REVIEWED SEVERAL MORE TIMES ---
+
+Code to be replaced -
+
+  Read_hsi:
+2533: 34,d8,01            jnb   B4,Rd8,2537      if (Sto_pending == 1)  {                                       1.8 us
+2536: f0                  ret                    return; }
+#
+# Update Reftime
+# Bump ReftimeH if IO_Timer has wrapped since Reftime last updated
+2537: 48,8c,06,84         sb3w  R84,R6,R8c       R84 = IO_Timer - Reftime;         # time diff                  1.0 us
+253b: 64,84,8c            ad2w  R8c,R84          Reftime += R84;                   # add diff (24 bits)         0.8
+253e: b4,00,8e            adcb  R8e,R0           ReftimeH += CY;                                                0.8
+#
+# Calculate Event_time from Reftime
+2541: b0,8e,7c            ldb   R7c,R8e          Event_timeH = ReftimeH;           # set event time Hi          0.8
+2544: 48,0e,8c,84         sb3w  R84,R8c,Re       R84 = Reftime - HSI_Time;         # time diff since event (Lo) 1.0
+2548: 65,02,00,84         ad2w  R84,2            R84 += 2;                         # add propagation delay ?    1.0
+254c: 48,84,8c,7a         sb3w  R7a,R8c,R84      Event_time = Reftime - R84;       # corrected event time       1.0
+2550: b8,00,7c            sbbb  R7c,R0           Event_timeH -= CY;                # (24 bit)                   0.8
+#
+# Determine which HSI signal(s) changed
+2553: b0,0d,83            ldb   R83,Rd           HSI_State = HSI_Data;             # read HSI data              0.8
+2556: b0,90,87            ldb   R87,R90          New_irqs = Last_HSI;              # current state              0.8
+2559: 94,83,87            xorb  R87,R83          New_irqs ^= HSI_State;            # get changed bits           0.8
+255c: 70,0c,87            an2b  R87,Rc           New_irqs &= HSI_Mask;             # mask for valid inputs      0.8
+255f: b0,83,90            ldb   R90,R83          Last_HSI = HSI_State;             # New state                  0.8
+2562: 11,4c               clrb  R4c              Flags_4C = 0;                                                  0.8
+#
+# Handle the changed signals
+#
+2564: 98,87,00            cmpb  R0,R87           
+2567: df,4a               je    25b3             if (0 != New_irqs)  {
+2569: 37,87,03            jnb   B7,R87,256f      if (Idm_irq == 1)  {
+256c: ef,16,5f            call  8485             Idm_inth(); }                     # handle Ign Diag Mon
+256f: 36,87,03            jnb   B6,R87,2575      if (Mph_irq == 1)  {
+2572: ef,a0,04            call  2a15             Vss_inth(); }                     # handle VSS counts
+2575: 35,87,03            jnb   B5,R87,257b      if (Cid_irq == 1)  {
+2578: ef,53,04            call  29ce             Cid_inth(); }                     # handle CID (not used in A9L)
+257b: 32,87,03            jnb   B2,R87,2581      if (Bap_irq == 1)  {
+257e: ef,0f,10            call  3590             Bap_inth(); }                     # handle BP/MAP
+2581: 31,87,03            jnb   B1,R87,2587      if (Knk_irq == 1)  {
+2584: ef,08,47            call  6c8f             Knk_inth(); }                     # handle KNK (not used in A9L)
+2587: 30,87,03            jnb   B0,R87,258d      if (Pip_irq == 1)  {
+258a: ef,3d,02            call  27ca             Pip_inth(); }                     # handle PIP
+258d: 98,00,87            cmpb  R87,R0           
+2590: df,21               je    25b3             if (New_irqs != 0)  {             # any more events?
+#
+# Unexpected event - recalculate HSI interrupt mask
+#
+# N.B. Calculation of HSI_Mask could be collapsed into simply loading a constant
+# For A9L, that constant is 0xC5: PIP, BP, VSS, IDM
+#
+2592: b1,87,0c            ldb   Rc,87            HSI_Mask = 87;                    # PIP, KI, BP, IDM enabled
+2595: 9b,f8,4a,00         cmpb  R0,[Rf8+4a]      
+2599: d7,03               jne   259e             if (0 == KIHP)  {                 # knock sensor fitted? (not in A9L)
+259b: b1,85,0c            ldb   Rc,85            HSI_Mask = 85; }                  # No, mask int
+#
+259e: 9b,fe,0c,00         cmpb  R0,[Rfe+c]       
+25a2: df,03               je    25a7             if (0 != HP_CID)  {               # CID sensor fitted? (not in A9L)
+25a4: 91,20,0c            orb   Rc,20            HSI_Mask |= 20; }                 # Yes, allow int
+#
+25a7: 9b,f2,47,00         cmpb  R0,[Rf2+47]                                        # VSS sensor fitted? (VSTYPE = 1 on A9L)
+25ab: df,03               je    25b0             if (0 != VSTYPE)  {               #
+25ad: 91,40,0c            orb   Rc,40            HSI_Mask |= 40; }                 # Yes, allow int
+#
+25b0: 91,01,4e            orb   R4e,1            Hsi_error = 1; } }                # flag extra events
+#
+25b3: 32,0a,02            jnb   B2,Ra,25b8       if (HSI_Ready == 0) return;
+25b6: 27,7b               sjmp  2533             goto Read_hsi;                    # repeat until HSI stack empty
+
+25b8: f0                  ret                    return;
+
+Code to replace it -
+
+  Read_hsi:
+2533: 3c,d8,57            jb   B4,Rd8,258d       if (Sto_pending == 1) return;                                  1.0 us
+#
+# Update Reftime
+# Bump ReftimeH if IO_Timer has wrapped since Reftime last updated
+2536: 48,8c,06,84         sb3w  R84,R6,R8c       R84 = IO_Timer - Reftime;         # time diff                  1.0 us
+253a: 64,84,8c            ad2w  R8c,R84          Reftime += R84;                   # add diff (24 bits)         0.8
+253d: b4,00,8e            adcb  R8e,R0           ReftimeH += CY;                                                0.8
+#
+# Calculate Event_time from Reftime
+2540: b0,8e,7c            ldb   R7c,R8e          Event_timeH = ReftimeH;           # set event time Hi          0.8
+2543: 48,0e,8c,84         sb3w  R84,R8c,Re       R84 = Reftime - HSI_Time;         # time diff since event (Lo) 1.0
+2547: 65,02,00,84         ad2w  R84,2            R84 += 2;                         # add propagation delay ?    1.0
+254b: 48,84,8c,7a         sb3w  R7a,R8c,R84      Event_time = Reftime - R84;       # corrected event time       1.0
+254f: b8,00,7c            sbbb  R7c,R0           Event_timeH -= CY;                # (24 bit)                   0.8
+#
+# Determine which HSI signal(s) changed
+2552: b0,0d,83            ldb   R83,Rd           HSI_State = HSI_Data;             # read HSI data              0.8
+2555: b0,90,87            ldb   R87,R90          New_irqs = Last_HSI;              # current state              0.8
+2558: 94,83,87            xorb  R87,R83          New_irqs ^= HSI_State;            # get changed bits           0.8
+255b: 70,0c,87            an2b  R87,Rc           New_irqs &= HSI_Mask;             # mask for valid inputs      0.8
+255e: b0,83,90            ldb   R90,R83          Last_HSI = HSI_State;             # New state                  0.8
+2561: 11,4c               clrb  R4c              Flags_4C = 0;                                                  0.8
+#
+# Handle the changed signals
+#
+2563: 98,87,00            cmpb  R0,R87           
+2566: df,22               je    258a             if (0 != New_irqs)  {
+2568: 37,87,03            jnb   B7,R87,256e      if (Idm_irq == 1)  {
+256b: ef,17,5f            call  8485             Idm_inth(); }                     # handle Ign Diag Mon
+256e: 36,87,03            jnb   B6,R87,2574      if (Mph_irq == 1)  {
+2571: ef,a1,04            call  2a15             Vss_inth(); }                     # handle VSS counts
+2574: 32,87,03            jnb   B2,R87,257a      if (Bap_irq == 1)  {
+2577: ef,16,10            call  3590             Bap_inth(); }                     # handle BP/MAP
+257a: 30,87,02            jnb   B0,R87,257f      if (Pip_irq == 1)  {
+257d: 2a,4b               scall 27ca             Pip_inth(); }                     # handle PIP
+257f: 98,00,87            cmpb  R87,R0           
+2582: df,06               je    258a             if (New_irqs != 0)  {             # any more events?
+#
+# Unexpected interrupt - Reset HSI interrupt mask
+#
+2583: b1,87,0c            ldb   Rc,c5            HSI_Mask = c5;                    # PIP, BP, VSS, IDM enabled
+2586: 91,01,4e            orb   R4e,1            Hsi_error = 1; } }                # flag extra events
+#
+258a: 3a,0a,a6            jb    B2,Ra,2533       if (HSI_Ready == 1) goto Read_hsi; # repeat until HSI stack empty 
+#
+# Jump here from 2533 (Sto_pending == 1)
+258d: f0                  ret                    return;
+#
+# End of active patch
+#
+258d - 25b5: ff (NOP)  
+25b6: e7,47,fa            jmp   RESET
+
+
+Hex editor (ROM starts at 0x0000 instead of 0x2000):
+
+Is:
+
+0530:          34  D8 01 F0 48  8C 06 84 64  84 8C B4 00
+0540: 8E B0 8E 7C  48 0E 8C 84  65 02 00 84  48 84 8C 7A
+0550: B8 00 7C B0  0D 83 B0 90  87 94 83 87  70 0C 87 B0
+0560: 83 90 11 4C  98 87 00 DF  4A 37 87 03  EF 16 5F 36
+0570: 87 03 EF A0  04 35 87 03  EF 53 04 32  87 03 EF 0F
+0580: 10 31 87 03  EF 08 47 30  87 03 EF 3D  02 98 00 87
+0590: DF 21 B1 87  0C 9B F8 4A  00 D7 03 B1  85 0C 9B FE
+05A0: 0C 00 DF 03  91 20 0C 9B  F2 47 00 DF  03 91 40 0C
+05B0: 91 01 4E 32  0A 02 27 7B  F0
+
+Becomes: (DOUBLE CHECK ME!!)
+
+0530:          3C  D8 57 48 8C  06 84 64 84  8C B4 00 8E
+0540: B0 8E 7C 48  0E 8C 84 65  02 00 84 48  84 8C 7A B8
+0550: 00 7C B0 0D  83 B0 90 87  94 83 87 70  0C 87 B0 83
+0560: 90 11 4C 98  87 00 DF 22  37 87 03 EF  17 5F 36 87
+0570: 03 EF A1 04  32 87 03 EF  16 10 30 87  02 2A 4B 98
+0580: 00 87 DF 06  B1 87 0C 91  01 4E 3A 0A  A6 F0 FF FF
+0590: FF FF FF FF  FF FF FF FF  FF FF FF FF  FF FF FF FF
+05A0: FF FF FF FF  FF FF FF FF  FF FF FF FF  FF FF FF FF
+05B0: FF FF FF FF  FF FF E7 47  FA
+
+
+Rationale for the changes:
+
+This is a heavily called routine, in the critical path for ignition
+timing.  Note that it not only handles PIP interrupts 8 times per
+revolution, but also 8 more IDM events (both up and down edges).
+
+The first thing we notice is the usual case, !Sto_pending,
+takes the first branch.  Reversing the sense of the test and jumping
+in the uncommon case saves us 0.8 us in the common case.
+
+The two tests for hardware that is known not to exist cost 3.6 us per
+iteration.  Removing them is a no-brainer.
+
+If there are no additional interrupts to handle, the exit test takes a
+conditional jump to a return for 1.8 us; looping back instead takes
+2.6 us.  The shorter routine makes it possible to replace the JNB -
+SJMP - RET end test with JB - RET, which saves time on both paths;
+exit goes down to 1.0 us and looping back to 1.8, for a net gain of
+0.8 us on each path.  The total savings is therefore 5.2 us/interrupt.
+
+This is a modest win.  At 6000 RPM, PIP interrupts happen 800 times
+per second, as do IDM interrupts.  That miniscule gain times 1600
+frees up 8.32 ms of CPU time per second for other things.
+
+The code to reset the HSI interrupt mask shouldn't be invoked very
+often, if at all.  Nevertheless, it can't hurt to replace a series of
+if-then-elses with constant branch criteria with a single LDB
+instruction.

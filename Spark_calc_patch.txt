@@ -1,0 +1,299 @@
+The Spark_calc routine can definitely stand some pruning.
+
+IS: 
+
+  Spark_calc:
+#
+# Knock retard logic
+# GUFB p. 7-40
+#
+2a4c: ac,dc,50            ldzbw R50,Rdc          R50 = (uns)Pip_counter;                                                    0.8
+2a4f: 36,4f,21            jnb   B6,R4f,2a73      if (KNOCK_ENABLED == 1)  {        # always 0 in A9L                        1.8
+2a52: 37,4f,1e            jnb   B7,R4f,2a73      if (KNOCK_OCCURRED == 1)  {
+2a55: 98,e1,00            cmpb  R0,Re1           
+2a58: d7,19               jne   2a73             if (0 == TIPRET)  {
+2a5a: b3,51,2b,02,52      ldb   R52,[R50+22b]    R52 = [R50+SPKADn];               # SparkAdvance[ cyl 1 - 8 ]
+2a5f: 78,e2,52            sb2b  R52,Re2          R52 -= RETINC;
+2a62: dd,06               jv    2a6a             if (OVF == 1) goto 2a6a;
+2a64: 9b,f8,30,52         cmpb  R52,[Rf8+30]                                       # Max degrees retard
+2a68: d6,04               jge   2a6e             if (R52 < RETLIM)  {              # Clip to RETLIM
+#
+2a6a: b3,f8,30,52         ldb   R52,[Rf8+30]     R52 = RETLIM; }
+#
+2a6e: c7,51,2b,02,52      stb   R52,[R50+22b]    [R50+SPKADn] = R52; } } }         # SparkAdvance[ cyl 1 -8 ]
+#
+# Jump here if no knock
+# R50 = Pip_counter
+#
+2a73: 2f,c9               scall 2a3e             knck4();                                                                   2.6 + routine (min 7.2)
+2a75: c4,dc,50            stb   R50,Rdc          Pip_counter = R50;                # Only place Pip_counter is assigned     0.8
+2a78: 36,4f,0c            jnb   B6,R4f,2a87      if (KNOCK_ENABLED == 0) goto 2a87; # always 0 in A9L                       1.8
+2a7b: 37,4f,09            jnb   B7,R4f,2a87      if (KNOCK_OCCURRED == 0) goto 2a87;
+2a7e: b3,f8,48,54         ldb   R54,[Rf8+48]     R54 = KNKCYL;                                                            (15.0 us to here)
+2a82: 99,01,54            cmpb  R54,1            
+2a85: d7,03               jne   2a8a             if (R54 != 1) goto 2a8a;
+#
+2a87: 35,2d,12            jnb   B5,R2d,2a9c      if (CTFLG == 1)  {                                                         1.0     1.8 if !CTFLG
+#
+# Tip-In Spark Logic
+# GUFB p. 7-42 (bottom)
+# R50 = Pip_counter
+#
+2a8a: 98,00,e1            cmpb  Re1,R0                                                                                      0.8
+2a8d: d7,0d               jne   2a9c             if (TIPRET == 0)  {                                                        0.8
+2a8f: 36,2d,0a            jnb   B6,R2d,2a9c      if (TIPFLG == 1)  {                                                        1.8
+2a92: b3,f8,32,e1         ldb   Re1,[Rf8+32]     TIPRET = TIPMAX;                  # tip in retard max = 0 in A9L
+2a96: c3,74,ac,aa         stw   Raa,[R74+ac]     TBART = TP;                       # Throttle position
+2a9a: 20,11               sjmp  2aad             goto 2aad; } } }
+#
+2a9c: b0,e1,52            ldb   R52,Re1          R52 = TIPRET;                                                              0.8     0.8
+2a9f: 77,f8,33,52         ad2b  R52,[Rf8+33]     R52 += TIPINC;                    # (degrees)                              0.8     0.8
+2aa3: da,02               jle   2aa7             if ((uns) R52 < 0)  {                                                      1.6     1.6
+2aa5: 11,52               clrb  R52              R52 = 0; }
+2aa7: c4,e1,52            stb   R52,Re1          TIPRET = R52;                                                              0.8     0.8
+2aaa: 36,4f,15            jnb   B6,R4f,2ac2      if (KNOCK_ENABLED == 1)  {        # always 0 in A9L                        1.8     1.8
+#
+2aad: 2f,8f               scall 2a3e             knck4();
+2aaf: 9b,f8,19,00         cmpb  R0,[Rf8+19]      
+2ab3: df,02               je    2ab7             if (0 != HP_HIDRES)  {            # HDRES not present on A9L
+2ab5: 2f,87               scall 2a3e             knck4(); }
+#
+2ab7: 57,51,2b,02,e1,52   ad3b  R52,Re1,[R50+22b] R52 = TIPRET + [R50+SPKADn];     # SparkAdvance[ cyl 1 -8 ]
+2abd: d5,03               jnv   2ac2             if (OVF == 1)  {
+2abf: b1,80,52            ldb   R52,80           R52 = 80; } }
+#
+2ac2: 16,52               sexb  R52              R52 = (int)R52;                                                            0.8     0.8
+2ac4: 44,c2,52,54         ad3w  R54,R52,Rc2      R54 = R52 + SAF;                                                           1.0     1.0
+2ac8: c3,74,1c,54         stw   R54,[R74+1c]     SAFTOT = R54;                                                              2.2     2.2
+2acc: bf,f8,0c,52         ldsbw R52,[Rf8+c]      R52 = (int)SPLCLP;                # Lower limit spark clip                 2.2     2.2
+2ad0: 88,52,54            cmpw  R54,R52                                                                                     0.8     0.8
+2ad3: d6,05               jge   2ada             if (R54 < R52)  {                                                          1.6     1.6
+2ad5: a0,52,54            ldw   R54,R52          R54 = R52;
+2ad8: 20,0c               sjmp  2ae6             goto 2ae6; }
+#
+2ada: af,f8,0d,52         ldzbw R52,[Rf8+d]      R52 = (uns)SPUCLP;                # Upper limit spark clip                 2.2     2.2
+2ade: 88,52,54            cmpw  R54,R52                                                                                     0.8     0.8
+2ae1: da,03               jle   2ae6             if (R54 > R52)  {                                                          1.6     1.6
+2ae3: a0,52,54            ldw   R54,R52          R54 = R52; }
+#
+2ae6: 9b,f8,19,00         cmpb  R0,[Rf8+19]                                                                                 2.2     2.2
+2aea: df,62               je    2b4e             if (0 != HP_HIDRES)  {            # HDRES not present on A9L               1.6     1.6
+#                                                                                                                          ----    ----         
+#                                                                                                                          41.2    38.6 us
+[...HIDRES code omitted for clarity....]
+#
+# Non HIDRES jumps to here from 0x2AEA
+2b4e: af,fe,07,56         ldzbw R56,[Rfe+7]      R56 = (uns)ENGCYL;                # no of PIPs/rev x 2
+[...]
+
+
+If we remove the pieces not applicable to Fox hardware, retain the
+tip-in retard, streamline the clip limit code so that as much as
+possible of the normal path (no tip-in retard, spark within bounds) is
+straight-lined, save to SAFTOT after clipping, and reorganize a tad,
+we get:
+
+  Spark_calc:
+#
+# Tip-In Spark Logic
+# GUFB p. 7-42 (bottom)
+#
+2a4c: 35,2d,15            jnb   B5,R2d,2a64      if (CTFLG == 1)  {                # set when throttle closed and LOAD < TIPLOD;    1.0     1.8
+                                                                                   # cleared when LOAD > TIPLOD + TIPHYS
+2a4f: 98,00,e1            cmpb  Re1,R0                                                                                              0.8
+2a52: d7,10               jne   2a64             if (TIPRET == 0)  {               # Only start tip-in retard if none currently     0.8
+                                                                                   #  in progress
+2a54: 36,2d,16            jnb   B6,R2d,2a6d      if (TIPFLG == 1)  {               # Tip-in occurring                               1.8
+#
+# Initial tip-in - set TIPRET to TIPMAX, record the throttle position
+#
+2a57: b3,f8,32,e1         ldb   Re1,[Rf8+32]     TIPRET = TIPMAX;                  # tip in retard max = 0 in A9L
+2a5b: c3,74,ac,aa         stw   Raa,[R74+ac]     TBART = TP;                       # Update rolling average
+2a5f: b0,e1,52            ldb   R52,Re1          R52 = TIPRET;
+2a62: 20,0e               sjmp  2a72             goto 2a72; } } }
+#
+# Bump TIPRET by TIPINC
+# Jump here if CTFLG == 0 or TIPRET != 0
+2a64: b0,e1,52            ldb   R52,Re1          R52 = TIPRET;                                                                              0.8
+2a67: 77,f8,33,52         ad2b  R52,[Rf8+33]     R52 += TIPINC;                    # (degrees/4)                                            2.2
+2a6b: da,02               jle   2a6f             if (R52 > 0)  {                                                                            1.6
+# 
+# Jump here from 2a54 (CTFLG == 1, TIPRET == 0, and TIPFLG == 0)
+# i.e. no tip retard in progress, and not starting one
+2a6d: 11,52               clrb  R52              R52 = 0; }                                                                         0.8       *
+#
+# Jump here from 2a6b (TIPRET <= 0)
+2a6f: c4,e1,52            stb   R52,Re1          TIPRET = R52;                                                                      0.8     0.8
+#
+# Jump here from 2a62 (initiated tip-in retard)
+# R52 = tip-in retard
+#
+2a72: 16,52               sexb  R52              R52 = (int)R52;                                                                    0.8     0.8
+2a74: 44,c2,52,54         ad3w  R54,R52,Rc2      R54 = R52 + SAF;                                                                   1.0     1.0
+2a78: bf,f8,0c,52         ldsbw R52,[Rf8+c]      R52 = (int)SPLCLP;                # Lower limit spark clip                         2.2     2.2
+2a7c: 88,52,54            cmpw  R54,R52                                                                                             0.8     0.8
+2a7f: de,09               jlt   2a8a             if (R54 < SPLCLP) goto Spark_clip;                                                 0.8     0.8
+2a81: af,f8,0d,52         ldzbw R52,[Rf8+d]      R52 = (uns)SPUCLP;                # Upper limit spark clip                         2.2     2.2
+2a85: 88,52,54            cmpw  R54,R52                                                                                             0.8     0.8
+2a88: da,03               jle   2a90             if (R54 <= SPUCLP) goto Spark_save;                                                1.6     1.6
+#
+# Jump here from 2a7f if clipped to lower limit
+# R52 = the clip limit
+#
+  Spark_clip:
+2a8a: a0,52,54            ldw   R54,R52          R54 = R52;                        # Set spark to the clip limit
+#
+# Jump here from 2a88 if not clipped
+  Spark_save:
+2a8d: c3,74,1c,54         stw   R54,[R74+1c]     SAFTOT = R54;                     # Save result for logging                        2.2     2.2
+2a91: 20,bb               sjmp  2b4e             goto 2b4e;                        # return to the existing code                    1.6     1.6
+#                                                                                                                                  ----    ----
+#                                                                                                                                  20.0    21.2 us
+#                                                                                                             if CTFLG at entry =     1       0
+2a93: e7,6a,f5            jmp   RESET            goto RESET;                       # OOPS
+
+
+* Note: In the case CTFLG == 0 and TIPRET == 0, the execution time is
+  identical whether the conditional branch at 2a6b is taken or not.
+
+This version of the routine saves at least 17.4 us per invocation.
+
+As a BIN patch -
+
+Is:
+
+0A40:                                        AC DC 50 36
+0A50: 4F 21 37 4F  1E 98 E1 00  D7 19 B3 51  2B 02 52 78
+0A60: E2 52 DD 06  9B F8 30 52  D6 04 B3 F8  30 52 C7 51
+0A70: 2B 02 52 2F  C9 C4 DC 50  36 4F 0C 37  4F 09 B3 F8
+0A80: 48 54 99 01  54 D7 03 35  2D 12 98 00  E1 D7 0D 36
+0A90: 2D 0A B3 F8  32 E1
+
+Becomes:
+
+0A40:                                        35 2D 15 98
+0A50: 00 E1 D7 10  36 2D 16 B3  F8 32 E1 C3  74 AC AA B0
+0A60: E1 52 20 0E  B0 E1 52 77  F8 33 52 DA  02 11 52 C4
+0A70: E1 52 16 52  44 C2 52 54  BF F8 0C 52  88 52 54 DE
+0A80: 09 AF F8 0D  52 88 52 54  DA 03 A0 52  54 C3 74 1C
+0A90: 54 20 BB E7  6A F5
+
+
+There is one more small speedup we can make without changing the
+behavior of this code for Foxes.
+
+We can replace the memory references to TIPMAX, TIPINC, SPLCLP, and
+SPUCLP with their actual values as immediate operands.  This is the
+only routine where they are referenced.  The strategy definition file
+can be modified to use the locations of the immediate operands,
+instead of the calibration data.  These substitutions also save memory
+references; because they are all byte constants, the code gets shorter
+as well.
+
+The result looks like this:
+
+  Spark_calc:
+#
+# Tip-In Spark Logic
+# GUFB p. 7-42 (bottom)
+#
+2a4c: 35,2d,15            jnb   B5,R2d,2a63      if (CTFLG == 1)  {                # set when throttle closed and LOAD < TIPLOD;    1.0     1.8
+                                                                                   # cleared when LOAD > TIPLOD + TIPHYS
+2a4f: 98,00,e1            cmpb  Re1,R0                                                                                              0.8
+2a52: d7,0f               jne   2a63             if (TIPRET == 0)  {               # No tip-in retard already in progress           0.8
+2a54: 36,2d,14            jnb   B6,R2d,2a6b      if (TIPFLG == 1)  {               # Tip-in occurring                               1.8
+#
+# Initial tip-in - set TIPRET to TIPMAX, record the throttle position
+#
+2a57: b1,00,e1            ldb   Re1,=TIPMAX      TIPRET = TIPMAX;                  # tip in retard max = 0 in A9L
+2a5a: c3,74,ac,aa         stw   Raa,[R74+ac]     TBART = TP;                       # Update rolling average
+2a5e: b0,e1,52            ldb   R52,Re1          R52 = TIPRET;
+2a61: 20,0d               sjmp  2a70             goto 2a70; } } }
+#
+# Bump TIPRET by TIPINC
+# Jump here if CTFLG == 0 or TIPRET != 0
+2a63: b0,e1,52            ldb   R52,Re1          R52 = TIPRET;                                                                              0.8
+2a66: 75,01,52            ad2b  R52,=TIPINC      R52 += TIPINC;                    # (degrees/4)                                            0.8
+2a69: da,02               jle   2a6d             if (R52 > 0)  {                                                                            1.6
+# 
+# Jump here from 2a54 (CTFLG == 1, TIPRET == 0, and TIPFLG == 0)
+# i.e. no tip retard in progress, and not starting one
+2a6b: 11,52               clrb  R52              R52 = 0; }                                                                         0.8
+#
+2a6d: c4,e1,52            stb   R52,Re1          TIPRET = R52;                                                                      0.8     0.8
+#
+# Jump here from 2a61 (initiated tip-in retard)
+# R52 = tip-in retard
+#
+2a70: 16,52               sexb  R52              R52 = (int)R52;                                                                    0.8     0.8
+2a72: 44,c2,52,54         ad3w  R54,R52,Rc2      R54 = R52 + SAF;                                                                   1.0     1.0
+2a76: bd,00,52            ldsbw R52,=SPUCLP      R52 = (int)SPLCLP;                # Lower limit spark clip                         0.8     0.8
+2a79: 88,52,54            cmpw  R54,R52                                                                                             0.8     0.8
+2a7c: de,08               jlt   2a86             if (R54 < SPLCLP) goto Spark_clip;                                                 0.8     0.8
+2a7e: ad,b4,52            ldzbw R52,=SPUCLP      R52 = (uns)SPUCLP;                # Upper limit spark clip                         0.8     0.8
+2a81: 88,52,54            cmpw  R54,R52                                                                                             0.8     0.8
+2a84: da,03               jle   2a89             if (R54 <= SPUCLP) goto Spark_save;                                                0.8     0.8
+#
+# Jump here from 2a7c if clipped to lower limit
+# R52 = the clip limit
+#
+  Spark_clip:
+2a86: a0,52,54            ldw   R54,R52          R54 = R52;
+#
+  Spark_save
+2a89: c3,74,1c,54         stw   R54,[R74+1c]     SAFTOT = R54;                     # Save result for logging                        2.2     2.2
+2a8d: 20,c1               sjmp  2b4e             goto 2b4e; }                      # Return to existing code
+#                                                                                                                                  ----    ----
+#                                                                                                                                  16.6    16.4 us
+#                                                                                                             if CTFLG at entry =     1       0
+#
+2a8f: ff                  nop                                                      # Catch any errant jumps to this code
+2a90: ff                  nop                                                                                                      
+2a91: ff                  nop                                                                                                      
+2a92: ff                  nop                                                                                                      
+2a93: e7,6a,f5            jmp   RESET            goto RESET;                       # OOPS
+
+This variant saves at least 22.2 us over stock.
+
+
+Note that Fox Mustangs don't actually use the tip-in retard; TIPMAX is
+0 in the A9L calibration, and NTIP (max tip-in RPM) is 0 so TIPFLG
+never gets set.  So if we have no intention of ever using it, we can
+remove the tip-in code.
+
+The only reason to save the total spark to SAFTOT was for logging the
+actual spark after tip-in and knock retard.  Nothing in the GUFB code
+ever reads it.  Since the tip-in and knock adjustments are gone, SAF
+already contains the total spark; so we can omit writing to SAFTOT
+too.
+
+Now all that is left is the clip limiting, and we get:
+
+  Spark_calc:
+2a4c: a0,c2,54            ldw   R54,Rc2          R54 = SAF;                                                                         0.8
+2a4f: bd,00,52            ldsbw R52,=SPUCLP      R52 = (int)SPLCLP;                # Lower limit spark clip (degrees BTDC x 4)      0.8
+2a52: 88,52,54            cmpw  R54,R52                                                                                             0.8
+2a55: de,0a               jlt   2a61             if (R54 < SPLCLP) goto Spark_clip;                                                 0.8
+2a57: ad,b4,52            ldzbw R52,=SPUCLP      R52 = (uns)SPUCLP;                # Upper limit spark clip (degrees BTDC x 4)      0.8
+2a5a: 88,52,54            cmpw  R54,R52                                                                                             0.8
+2a5d: d2,02               jgt   2a61             if (R54 > SPUCLP) goto Spark_clip;                                                 0.8
+2a5f: 20,ed               sjmp  2b4e             goto 2b4e;                        # return to the existing code                    1.6
+#
+# Jump here if clipped
+# R52 = the clip limit
+#
+Spark_clip:
+2a61: a0,52,54            ldw   R54,R52          R54 = R52;
+2a64: 20,e8               sjmp  2b4e             goto 2b4e; }                      # Return to existing code
+#                                                                                                                                  ----
+#                                                                                                                                   7.2 us
+
+This version saves at least 32.4 us.  At 3000 RPM (50 RPS, 200
+pips/sec), that frees up 6.48 ms of CPU time per second for other
+things; even more at higher RPM.
+
+
+Rationale:
+
+Spark_calc is called (at least?) 4 times per engine revolution.  The
+criticality of this routine's run time increases with engine speed.

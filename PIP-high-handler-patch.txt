@@ -1,0 +1,371 @@
+Is:
+
+##### PIP High handler
+# R52:R50: # of ticks since last PIP High (24 bits)
+# R54 (word): MNPIP
+#
+27e5: 3c,2d,23            jb    B4,R2d,280b      if (FIRST_PIP == 0)  {
+#
+# Very first PIP high event
+# Initialize the injector events in the HSO RAM table (2c5) from InjTab table (22a6)
+#
+27e8: 91,10,2d            orb   R2d,10           FIRST_PIP = 1;
+27eb: a1,a6,22,56         ldw   R56,22a6         R56 = InjTTab;                    # Base of Table
+#
+27ef: 89,56,23,56         cmpw  R56,2356         
+27f3: db,14               jgeu  2809             if (R56 < InjTTab_end)  {         # Are we done yet?
+27f5: af,56,05,58         ldzbw R58,[R56+5]      R58 = (uns)[R56+5];               # offset of entry in 2C5 Table
+                                                                                   #  - 0f on first pass -> Q1
+                                                                                   #  Increments by 0a each entry for in InjTTab
+27f9: c7,59,c2,02,7c      stb   R7c,[R58+2c2]    [R58+HSOQ-3] = Event_timeH;       # Write 24 bit PIP event time (high byte first?)
+27fe: c3,59,c3,02,7a      stw   R7a,[R58+2c3]    [R58+HSOQ-2] = Event_time;        
+2803: 65,16,00,56         ad2w  R56,16           R56 += 16;                        # next InjTab entry (22 bytes)
+2807: 27,e6               sjmp  27ef             goto 27ef; }                      # loop
+#
+2809: 20,2c               sjmp  2837             goto 2837; }
+
+##### PIP High handler (not very first pip)
+# R52:R50: # of ticks since last PIP High (24 bits)
+# R54 (word): MNPIP
+#
+280b: 98,52,00            cmpb  R0,R52           
+280e: d7,09               jne   2819             if (0 == R52)  {
+2810: 88,50,54            cmpw  R54,R50          
+2813: d1,04               jleu  2819             if ((uns) MNPIP > R50)  {         # time too small - ignore this event
+2815: 71,fe,90            an2b  R90,fe           Last_HSI &= fe;                   # clear last PIP flag
+2818: f0                  ret                    return; } }                       # and exit
+#
+# Valid PIP interval
+2819: 91,0c,4e            orb   R4e,c            New_Bpv = 1;
+                                                 New_rpm = 1;
+281c: 91,02,28            orb   R28,2            PTPFLG = 1;
+281f: 9b,fe,0c,00         cmpb  R0,[Rfe+c]       
+2823: d7,09               jne   282e             if (0 == HP_CID)  {               # CID sensor present ? (Not on A9L)
+#
+# Begin signature PIP processing
+#
+2825: 3e,2e,06            jb    B6,R2e,282e      if (SYNFLG == 0)  {               # AE fuel - sync = 1, async = 0. Init to 0
+2828: 3a,25,03            jb    B2,R25,282e      if (Mhpfd_neg == 0)  {
+282b: 71,fb,2d            an2b  R2d,fb           Dual_edge = 0; } } }
+#
+282e: 71,fe,4f            an2b  R4f,fe           Pip_double = 0;
+2831: 32,2d,03            jnb   B2,R2d,2837      if (Dual_edge == 1)  {
+2834: 91,01,4f            orb   R4f,1            Pip_double = 1; }
+#
+# Jump here from 2809 on very first PIP High event
+2837: 91,80,4e            orb   R4e,80           New_pip = 1;
+283a: c3,76,ba,ba         stw   Rba,[R76+ba]     DT23S = DT12S;                    # Previous PIP period
+283e: a0,50,ba            ldw   Rba,R50          DT12S = R50;                      # new PIP period 24 bits
+2841: b0,52,bc            ldb   Rbc,R52          DT12SH = R52;                     # period = time since last PIP High
+2844: 9b,f8,19,00         cmpb  R0,[Rf8+19]      
+2848: d7,03               jne   284d             if (0 == HP_HIDRES)  {            # High Data Rate Electronic Spark Present? (not present on A9L)
+284a: ef,44,04            call  2c91             Calc_dwell(); }                   # first check is for TFI controlled dwell
+#
+284d: 98,00,bc            cmpb  Rbc,R0                                             # PIP time hi 8 bits
+2850: d7,10               jne   2862             if (DT12SH == 0)  {
+2852: 8b,76,48,ba         cmpw  Rba,[R76+48]                                       # PIP time lo 16 bits
+2856: d9,0a               jgtu  2862             if ((uns) DT12S <= Sim_min)  {
+2858: b3,fc,33,50         ldb   R50,[Rfc+33]     R50 = OUTINJ;                     # Sequential (1) or simultaneous (2) inject
+285c: 39,50,03            jb    B1,R50,2862      if (B1_OUTINJ == 0)  {
+285f: 71,f7,2e            an2b  R2e,f7           Simultaneous = 0; } } }           # Transition to sequential injection
+#
+2862: c3,74,50,7a         stw   R7a,[R74+50]     Prev_PIP_time = Event_time;       # PIP HSI event time lo 16 bits
+2866: c7,74,52,7c         stb   R7c,[R74+52]     Prev_PIP_timeH = Event_timeH;     # PIP HSI event time hi 8 bits
+#
+# Part of Decel Fuel Shutoff Logic
+# GUFB p. 6-71
+#
+286a: 39,ca,0c            jb    B1,Rca,2879      if (Declflg == 0)  {
+286d: 17,b3               incb  Rb3              PPCTR++;                          # 
+286f: 9b,fc,53,b3         cmpb  Rb3,[Rfc+53]
+2873: d1,04               jleu  2879             if ((uns) PPCTR > PIPNUM )  {
+2875: b3,fc,53,b3         ldb   Rb3,[Rfc+53]     PPCTR = PIPNUM; } }               # Clip PPCTR to PIPNUM
+#
+2879: 17,b4               incb  Rb4              PIPCNT++;                         # increment PIPCNT
+287b: d7,02               jne   287f             if (PIPCNT == 0)  {
+287d: 15,b4               decb  Rb4              PIPCNT--; }                       # clip to 255
+287f: 17,9c               incb  R9c              ANPIP1++;
+2881: d7,02               jne   2885             if (ANPIP1 == 0)  {
+2883: 15,9c               decb  R9c              ANPIP1--; }                       # clip to 255
+2885: 17,9d               incb  R9d              ANPIP2++;
+2887: d7,02               jne   288b             if (ANPIP2 == 0)  {
+2889: 15,9d               decb  R9d              ANPIP2--; }                       # clip to 255
+288b: 35,2a,0a            jnb   B5,R2a,2898      if (RUNNING == 1)  {
+288e: a3,72,76,50         ldw   R50,[R72+76]     R50 = Vcb_pip_cnt;
+2892: 07,50               incw  R50              R50++;
+2894: c3,72,76,50         stw   R50,[R72+76]     Vcb_pip_cnt = R50; }
+#
+2898: 75,20,d1            ad2b  Rd1,20           SYNCTR += 20;
+289b: 9b,f8,19,00         cmpb  R0,[Rf8+19]      
+289f: d7,03               jne   28a4             if (0 == HP_HIDRES)  {
+28a1: ef,65,42            call  6b09             Sub36(); }                        # Call if HIDRES not present (not present on A9L)
+#
+28a4: 33,0a,fd            jnb   B3,Ra,28a4       if (AD_Ready == 0) goto 28a4;     # spin wait for MAF A/D conversion complete
+#
+28a7: 51,f0,04,50         an3b  R50,R4,f0        R50 = AD_Low & f0;                # mask out channel no
+28ab: b0,05,51            ldb   R51,R5           R51 = AD_High;
+28ae: c3,72,a4,50         stw   R50,[R72+a4]     IMAF = R50;                       # save as IMAF
+28b2: 30,4f,03            jnb   B0,R4f,28b8      if (Pip_double == 1)  {
+28b5: ef,5c,43            call  6c14             Sub37(); }
+#
+28b8: 71,7f,4f            an2b  R4f,7f           KNOCK_OCCURRED = 0;
+28bb: 33,4f,09            jnb   B3,R4f,28c7      if (KNOCK_DETECTED == 1)  {       # always 0 on A9L
+28be: 91,80,4f            orb   R4f,80           KNOCK_OCCURRED = 1;
+28c1: 39,90,03            jb    B1,R90,28c7      if (B1_Last_HSI == 0)  {
+28c4: 71,f7,4f            an2b  R4f,f7           KNOCK_DETECTED = 0; } }
+#
+28c7: a1,96,22,92         ldw   R92,2296         TPtr = 2296;                      # routine in 2284 Table
+28cb: 9b,f8,19,00         cmpb  R0,[Rf8+19]      
+28cf: df,07               je    28d8             if (0 == HP_HIDRES) goto 28d8;    # no HIDRES h/w in A9L
+#
+# Only executed if HIDRES present (not on A9L)
+28d1: 3a,a1,2e            jb    B2,Ra1,2902      if (UNDSP == 0)  {                # Underspeed Flag
+28d4: 29,76               scall 2a4c             Spark_calc();
+28d6: 20,2a               sjmp  2902             goto 2902;
+# End HIDRES present
+#
+# R92 (word) = 2296
+#
+28d8: 32,a1,16            jnb   B2,Ra1,28f1      if (UNDSP == 1)  {
+28db: 39,2d,06            jb    B1,R2d,28e4      if (Undsp_trans == 0)  {
+#
+# still in underspeed
+28de: 91,08,4c            orb   R4c,8            Immediate = 1;
+28e1: ef,d9,fa            call  23bd             Send_HSO_Cmd(); }                 # R92=2296 - send SPOUT On HSO command and other stuff
+#
+# Jump here from 28db (transition into underspeed)
+28e4: 71,fb,2d            an2b  R2d,fb           Dual_edge = 0;
+28e7: a1,00,80,50         ldw   R50,8000         R50 = 8000;
+28eb: c3,74,04,50         stw   R50,[R74+4]      Old_beta = R50;
+28ef: 20,11               sjmp  2902             goto 2902; }
+#
+# Not in underspeed
+28f1: 38,4f,0e            jb    B0,R4f,2902      if (Pip_double == 0)  {
+28f4: 31,2d,09            jnb   B1,R2d,2900      if (Undsp_trans == 1)  {
+#
+# Transition out of underspeed
+28f7: 91,08,4c            orb   R4c,8            Immediate = 1;
+28fa: ef,fc,fb            call  24f9             Do_CmdN();
+28fd: 71,fd,2d            an2b  R2d,fd           Undsp_trans = 0; }
+#
+# Jump here from 28f4 (not transitioning out of underspeed)
+2900: 29,4a               scall 2a4c             Spark_calc(); } }
+#
+# Jump here from 28d6 (HIDRES present), 28ef (UNDSP == 1), 28f1 (Pip_double == 1)
+2902: b1,ff,50            ldb   R50,ff           R50 = ff;
+2905: c7,72,11,50         stb   R50,[R72+11]     Inj_pip = R50;
+2909: 91,20,2f            orb   R2f,20           Maf_pip = 1;
+290c: a0,7a,52            ldw   R52,R7a          R52 = Event_time;
+290f: ef,25,04            call  2d37             MAF_calc();
+2912: ef,46,05            call  2e5b             Sub4();
+2915: ef,b0,06            call  2fc8             Sub5();
+2918: 20,b3               sjmp  29cd             return;
+
+
+How can we restructure this to make the critical path faster?
+
+*** TODO: Triple-check jump and call offsets
+
+##### PIP High handler
+# R52:R50: # of ticks since last PIP High (24 bits)
+# R54 (word): MNPIP
+#
+27e5: 34,2d,0e            jnb    B4,R2d,27f6     if (FIRST_PIP == 1)  {
+#
+# Not very first pip
+#
+27e8: 98,52,00            cmpb  R0,R52           
+27eb: d7,2a               jne   2817             if (0 == R52)  {                  # jump if interval > 157 ms
+27ed: 88,50,54            cmpw  R54,R50          
+27f0: d1,25               jleu  2817             if ((uns) MNPIP > R50)  {         # time too small - ignore this event
+27f2: 71,fe,90            an2b  R90,fe           Last_HSI &= fe;                   # clear last PIP flag
+27f5: f0                  ret                    return; } }                       # and exit
+#
+# Very first PIP high event
+#
+  On_First_Pip:
+27f6: 91,10,2d            orb   R2d,10           FIRST_PIP = 1;
+#
+# Initialize the injector events in the HSO RAM table (2c5) from InjTab table (22a6)
+#
+27f9: a1,a6,22,56         ldw   R56,22a6         R56 = InjTTab;                    # Base of Table
+  Init_Injtab_Loop:
+27fd: af,56,05,58         ldzbw R58,[R56+5]      R58 = (uns)[R56+5];               # offset of entry in 2C5 Table
+                                                                                   #  - 0f on first pass -> Q1
+                                                                                   #  Increments by 0a each entry for in InjTTab
+2801: c7,59,c2,02,7c      stb   R7c,[R58+2c2]    [R58+HSOQ-3] = Event_timeH;       # Write 24 bit PIP event time (high byte first?)
+2806: c3,59,c3,02,7a      stw   R7a,[R58+2c3]    [R58+HSOQ-2] = Event_time;        
+280b: 65,16,00,56         ad2w  R56,16           R56 += 16;                        # next InjTab entry (22 bytes)
+280f: 89,56,23,56         cmpw  R56,2356         
+2813: d3,e8               jltu  Init_Injtab_Loop if (R56 < InjTTab_end) loop;      # Are we done yet?
+#
+2815: 20,15               sjmp  282c             goto Pip_High_Common;
+
+#
+# Valid PIP interval
+  Valid_Pip:
+2817: 91,0c,4e            orb   R4e,c            New_Bpv = 1;
+                                                 New_rpm = 1;
+281a: 91,02,28            orb   R28,2            PTPFLG = 1;
+#
+# Disable Dual_edge if fuel not in sync
+#
+281d: 3e,2e,06            jb    B6,R2e,282e      if (SYNFLG == 0)  {               # Injection not yet in sync
+2820: 71,fb,2d            an2b  R2d,fb           Dual_edge = 0; } } }
+#
+# Jump here if fuel in sync
+2823: 71,fe,4f            an2b  R4f,fe           Pip_double = 0;
+2826: 32,2d,03            jnb   B2,R2d,2837      if (Dual_edge == 1)  {
+2829: 91,01,4f            orb   R4f,1            Pip_double = 1; }
+#
+# Jump here from 2809 on very first PIP High event
+# Common code from here down
+#
+  Pip_High_Common:
+282c: 91,80,4e            orb   R4e,80           New_pip = 1;
+282f: c3,76,ba,ba         stw   Rba,[R76+ba]     DT23S = DT12S;                    # Previous PIP period
+2833: a0,50,ba            ldw   Rba,R50          DT12S = R50;                      # new PIP period 24 bits
+2836: b0,52,bc            ldb   Rbc,R52          DT12SH = R52;                     # period = time since last PIP High
+#
+# Calc_dwell condensed and inlined here
+#
+2839: c3,74,ca,be         stw   Rbe,[R74+ca]     Spout_low_time = HFDLTA;          # Used by SPOUT HSO handler - see Add_SpoutLo
+283d: 48,be,ba,52         sb3w  Rbe,Rba,R52
+2841: c3,74,be,52         stw   R52,[R74+be]     Dwell = DT12S - HLFDLTA;          # Used by SPOUT HSO handler - see Upd_Htime_Prev
+#
+# end Calc_dwell
+#
+2845: 98,00,bc            cmpb  Rbc,R0                                             # PIP time hi 8 bits
+2848: d7,10               jne   285a             if (DT12SH == 0)  {
+284a: 8b,76,48,ba         cmpw  Rba,[R76+48]                                       # PIP time lo 16 bits
+284e: d9,0a               jgtu  285a             if ((uns) DT12S <= Sim_min)  {
+2850: b3,fc,33,50         ldb   R50,[Rfc+33]     R50 = OUTINJ;                     # Sequential (1) or simultaneous (2) inject
+2854: 39,50,03            jb    B1,R50,285a      if (B1_OUTINJ == 0)  {
+2857: 71,f7,2e            an2b  R2e,f7           Simultaneous = 0; } } }           # Transition to sequential injection
+#
+285a: c3,74,50,7a         stw   R7a,[R74+50]     Prev_PIP_time = Event_time;       # PIP HSI event time lo 16 bits
+285e: c7,74,52,7c         stb   R7c,[R74+52]     Prev_PIP_timeH = Event_timeH;     # PIP HSI event time hi 8 bits
+#
+# Part of Decel Fuel Shutoff Logic
+# GUFB p. 6-71
+#
+2862: 39,ca,0c            jb    B1,Rca,2871      if (Declflg == 0)  {
+2865: 17,b3               incb  Rb3              PPCTR++;                          # Count PIPs after coming out of DFSO
+2867: 9b,fc,53,b3         cmpb  Rb3,[Rfc+53]
+286b: d1,04               jleu  2871             if ((uns) PPCTR > PIPNUM )  {
+286d: b3,fc,53,b3         ldb   Rb3,[Rfc+53]     PPCTR = PIPNUM; } }               # Clip PPCTR to PIPNUM
+#
+2871: 17,b4               incb  Rb4              PIPCNT++;                         # increment PIPCNT (CRANK mode)
+2873: d7,02               jne   2875             if (PIPCNT == 0)  {
+2875: 15,b4               decb  Rb4              PIPCNT--; }                       # clip to 255
+2877: 17,9c               incb  R9c              ANPIP1++;                         # PIPs since EGO1 switched last
+2879: d7,02               jne   287d             if (ANPIP1 == 0)  {
+287b: 15,9c               decb  R9c              ANPIP1--; }                       # clip to 255
+287d: 17,9d               incb  R9d              ANPIP2++;                         # PIPs since EGO2 switched last
+287f: d7,02               jne   2883             if (ANPIP2 == 0)  {
+2881: 15,9d               decb  R9d              ANPIP2--; }                       # clip to 255
+2883: 35,2a,0a            jnb   B5,R2a,2890      if (RUNNING == 1)  {              # in KOER test
+2886: a3,72,76,50         ldw   R50,[R72+76]     R50 = Vcb_pip_cnt;
+288a: 07,50               incw  R50              R50++;
+288c: c3,72,76,50         stw   R50,[R72+76]     Vcb_pip_cnt = R50; }
+#
+2890: 75,20,d1            ad2b  Rd1,20           SYNCTR += 20;                     # Bump SYNCTR to next cylinder
+2893: ef,73,42            call  6b09             Sub36();                          # Calculate MKAY, etc. - only caller
+#
+2896: 33,0a,fd            jnb   B3,Ra,2896       if (AD_Ready == 0) goto 2896;     # spin wait for MAF A/D conversion complete
+#
+2899: 51,f0,04,50         an3b  R50,R4,f0        R50 = AD_Low & f0;                # mask out channel no
+289d: b0,05,51            ldb   R51,R5           R51 = AD_High;
+28a0: c3,72,a4,50         stw   R50,[R72+a4]     IMAF = R50;                       # save as IMAF
+28a4: 30,4f,03            jnb   B0,R4f,28aa      if (Pip_double == 1)  {
+28a7: ef,6a,43            call  6c14             Sub37(); }                        # Transient spark compensation - only caller
+#
+28aa: a1,96,22,92         ldw   R92,2296         TPtr = 2296;                      # SPOUT ON entry in 2284 Table
+#
+# R92 (word) = 2296
+#
+28ae: 3a,a1,16            jb    B2,Ra1,28d8      if (UNDSP == 0)  {
+#
+# Not in underspeed
+28b1: 38,4f,0e            jb    B0,R4f,28c2      if (Pip_double == 0)  {
+28b4: 31,2d,09            jnb   B1,R2d,28c0      if (Undsp_trans == 1)  {   
+#
+# Transitioned out of underspeed
+28b7: 91,08,4c            orb   R4c,8            Immediate = 1;
+28ba: ef,3c,fc            call  24f9             Do_CmdN();
+28bd: 71,fd,2d            an2b  R2d,fd           Undsp_trans = 0; }
+#
+# Jump here from 28b4 (not underspeed, not transitioned)
+28c0: 29,8a               scall 2a4c             Spark_calc(); } }
+#
+# Jump here from 28ec (UNDSP == 1), 28e1 (Pip_double == 1)
+28c2: b1,ff,50            ldb   R50,ff           R50 = ff;
+28c5: c7,72,11,50         stb   R50,[R72+11]     Inj_pip = R50;
+28c9: 91,20,2f            orb   R2f,20           Maf_pip = 1;
+28cc: a0,7a,52            ldw   R52,R7a          R52 = Event_time;
+28cf: ef,65,04            call  2d37             MAF_calc();
+28d2: ef,86,05            call  2e5b             Sub4();                           # Foreground fuel
+28d5: e7,f0,06            jmp   2fc8             goto Sub5();                      # Schedule injectors and return
+#
+# In underspeed, transitioned in?
+28d8: 39,2d,06            jb    B1,R2d,28e1      if (Undsp_trans == 0)  {
+#
+# In underspeed, not transitioned
+28db: 91,08,4c            orb   R4c,8            Immediate = 1;
+28de: ef,dc,fa            call  23bd             Send_HSO_Cmd(); }                 # R92=2296 - send SPOUT On HSO command and other stuff
+#
+# Jump here from 28d8 (transitioned into underspeed)
+28e1: 71,fb,2d            an2b  R2d,fb           Dual_edge = 0;
+28e4: a1,00,80,50         ldw   R50,8000         R50 = 8000;
+28e8: c3,74,04,50         stw   R50,[R74+4]      Old_beta = R50;
+28ec: 20,d4               sjmp  28c2             goto 28c2;
+
+
+As a patch:
+
+Is:
+
+07E0:                 3C 2D 23  91 10 2D A1  A6 22 56 89
+07F0: 56 23 56 DB  14 AF 56 05  58 C7 59 C2  02 7C C3 59
+0800: C3 02 7A 65  16 00 56 27  E6 20 2C 98  52 00 D7 09
+0810: 88 50 54 D1  04 71 FE 90  F0 91 0C 4E  91 02 28 9B
+0820: FE 0C 00 D7  09 3E 2E 06  3A 25 03 71  FB 2D 71 FE
+0830: 4F 32 2D 03  91 01 4F 91  80 4E C3 76  BA BA A0 50
+0840: BA B0 52 BC  9B F8 19 00  D7 03 EF 44  04 98 00 BC
+0850: D7 10 8B 76  48 BA D9 0A  B3 FC 33 50  39 50 03 71
+0860: F7 2E C3 74  50 7A C7 74  52 7C 39 CA  0C 17 B3 9B
+0870: FC 53 B3 D1  04 B3 FC 53  B3 17 B4 D7  02 15 B4 17
+0880: 9C D7 02 15  9C 17 9D D7  02 15 9D 35  2A 0A A3 72
+0890: 76 50 07 50  C3 72 76 50  75 20 D1 9B  F8 19 00 D7
+08A0: 03 EF 65 42  33 0A FD 51  F0 04 50 B0  05 51 C3 72
+08B0: A4 50 30 4F  03 EF 5C 43  71 7F 4F 33  4F 09 91 80
+08C0: 4F 39 90 03  71 F7 4F A1  96 22 92 9B  F8 19 00 DF
+08D0: 07 3A A1 2E  29 76 20 2A  32 A1 16 39  2D 06 91 08
+08E0: 4C EF D9 FA  71 FB 2D A1  00 80 50 C3  74 04 50 20
+08F0: 11 38 4F 0E  31 2D 09 91  08 4C EF FC  FB 71 FD 2D
+0900: 29 4A B1 FF  50 C7 72 11  50 91 20 2F  A0 7A 52 EF
+0910: 25 04 EF 46  05 EF B0 06  20 B3
+
+
+Becomes:
+
+07E0:                 34 2D 0E  98 52 00 D7  2A 88 50 54
+07F0: D1 25 71 FE  90 F0 91 10  2D A1 A6 22  56 AF 56 05
+0800: 58 C7 59 C2  02 7C C3 59  C3 02 7A 65  16 00 56 89
+0810: 56 23 56 D3  E8 20 15 91  0C 4E 91 02  28 3E 2E 06
+0820: 71 FB 2D 71  FE 4F 32 2D  03 91 01 4F  91 80 4E C3
+0830: 76 BA BA A0  50 BA B0 52  BC C3 74 CA  BE 48 BE BA
+0840: 52 C3 74 BE  52 98 00 BC  D7 10 8B 76  48 BA D9 0A
+0850: B3 FC 33 50  39 50 03 71  F7 2E C3 74  50 7A C7 74
+0860: 52 7C 39 CA  0C 17 B3 9B  FC 53 B3 D1  04 B3 FC 53
+0870: B3 17 B4 D7  02 15 B4 17  9C D7 02 15  9C 17 9D D7
+0880: 02 15 9D 35  2A 0A A3 72  76 50 07 50  C3 72 76 50
+0890: 75 20 D1 EF  73 42 33 0A  FD 51 F0 04  50 B0 05 51
+08A0: C3 72 A4 50  30 4F 03 EF  6A 43 A1 96  22 92 3A A1
+08B0: 16 38 4F 0E  31 2D 09 91  08 4C EF 3C  FC 71 FD 2D
+08C0: 29 8A B1 FF  50 C7 72 11  50 91 20 2F  A0 71 52 EF
+08D0: 65 04 EF 86  05 E7 F0 06  39 2D 06 91  08 4C EF DC
+08E0: FA 71 FB 2D  A1 00 80 50  C3 74 04 50  20 D4 FF FF
+08F0: FF FF FF FF  FF FF FF FF  FF FF FF FF  FF FF FF FF
+0900: FF FF FF FF  FF FF FF FF  FF FF FF FF  FF FF FF FF
+0910: FF FF FF FF  FF FF FF E7  DD 1E
