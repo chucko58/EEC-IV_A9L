@@ -13,7 +13,7 @@ The current list of background tasks is:
 2194: 4e,38               vect  384e,            Update_AD                         # Read/update raw AD vals
 2196: f3,37               vect  37f3,            Update_WOT                        # Update WOT flag
 2198: f4,4e               vect  4ef4,            Do_accelpump
-219a: 5a,3d               vect  3d5a,            Update_HWND                       # Update heated windshield flag
+219a: 5a,3d               vect  3d5a,            Update_HWND                       # Update heated windshield flag    (not present on A9L)
 219c: e4,3c               vect  3ce4,            Update_MPH                        # Update (MPH) vehicle speed values
 219e: ac,3d               vect  3dac,            Update_rpm                        # Update RPM?
 21a0: dd,63               vect  63dd,            Update_AC                         # Update A/C clutch control, idle increment
@@ -21,7 +21,7 @@ The current list of background tasks is:
 21a2: d4,65               vect  65d4,            Set_Timers
 21a4: fe,68               vect  68fe,            Update_timers                     # Update Timers
 21a6: 8f,84               vect  848f,            Set_ign_timers
-21a8: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel consumption for DOL
+21a8: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel consumption for DOL (can be deleted)
 21aa: 7c,3e               vect  3e7c,            Load_Calc
 21ac: 30,85               vect  8530,            Update_PFE_EGR                    # Update PFE EGR (not present in A9L)
 21ae: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
@@ -81,7 +81,7 @@ The current list of background tasks is:
 220c: d4,65               vect  65d4,            Set_Timers
 220e: fe,68               vect  68fe,            Update_timers                     # Update Timers
 2210: 8f,84               vect  848f,            Set_ign_timers
-2212: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel comsumption for DOL
+2212: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel comsumption for DOL (can be deleted)
 2214: 7c,3e               vect  3e7c,            Load_Calc
 2216: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
 2218: 5b,4b               vect  4b5b,            Sub19                             # Something Injection ?
@@ -90,7 +90,7 @@ The current list of background tasks is:
 221e: b0,58               vect  58b0,            Update_Idle                       # Ccheck idle speed?
 2220: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
 2222: 3f,82               vect  823f,            CHk_HEGO                          # Check HEGO sensors
-2224: 28,82               vect  8228,            Sub115                            # Check brake and PS flags
+2224: 28,82               vect  8228,            Sub115                            # Check brake and PS flags (not present in A9L)
 2226: 49,6e               vect  6e49,            Do_SelfTest                       # Ddiagnostic Self Tests
 2228: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
 222a: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
@@ -119,24 +119,24 @@ the A9L:
 21a0: d4,65               vect  65d4,            Set_Timers
 21a2: fe,68               vect  68fe,            Update_timers                     # Update Timers
 21a4: 8f,84               vect  848f,            Set_ign_timers
-21a6: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel consumption for DOL
-21a8: 7c,3e               vect  3e7c,            Load_Calc
-21aa: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
-21ac: 41,41               vect  4141,            Check_spd_lim                     # Check for RPM and Speed limiters
-21ae: a1,41               vect  41a1,            Update_clolp                      # Update closed loop flags
-21b0: 00,47               vect  4700,            Adapt?                            # Adaptive something
-21b2: d7,4a               vect  4ad7,            Calc_Fuel                         # Background fuel calculation
-21b4: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
-21b6: 36,51               vect  5136,            Calc_EVP                          # EVP something
-21b8: d9,54               vect  54d9,            Calc_EGR                          # EGR stuff - must follow Calc_EVP
-21ba: c3,55               vect  55c3,            Update_advance                    # Update spark advance
-21bc: 17,6d               vect  6d17,            UPd_KnkRet                        # Update Knock and Tip-in Retard (no-op in A9L)
-21be: 91,61               vect  6191,            Upd_air_mgt                       # Update thermactor air
-21c0: 35,63               vect  6335,            Upd_canpTm                        # Update Canister Purge timing
-21c2: b0,58               vect  58b0,            Update_Idle                       # Update idle speed
-21c4: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
-21c6: 2e,73               vect  732e,            Cont_Self_Test
-21c8: 49,6e               vect  6e49,            Do_SelfTest                       # diagnostic Self Tests
+21a6: 7c,3e               vect  3e7c,            Load_Calc
+21a8: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+21aa: 41,41               vect  4141,            Check_spd_lim                     # Check for RPM and Speed limiters
+21ac: a1,41               vect  41a1,            Update_clolp                      # Update closed loop flags
+21ae: 00,47               vect  4700,            Adapt?                            # Adaptive something
+21b0: d7,4a               vect  4ad7,            Calc_Fuel                         # Background fuel calculation
+21b2: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+21b4: 36,51               vect  5136,            Calc_EVP                          # EVP something
+21b6: d9,54               vect  54d9,            Calc_EGR                          # EGR stuff - must follow Calc_EVP
+21b8: c3,55               vect  55c3,            Update_advance                    # Update spark advance
+21ba: 17,6d               vect  6d17,            UPd_KnkRet                        # Update Knock and Tip-in Retard (no-op in A9L)
+21bc: 91,61               vect  6191,            Upd_air_mgt                       # Update thermactor air
+21be: 35,63               vect  6335,            Upd_canpTm                        # Update Canister Purge timing
+21c0: b0,58               vect  58b0,            Update_Idle                       # Update idle speed
+21c2: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+21c4: 2e,73               vect  732e,            Cont_Self_Test
+21c6: 49,6e               vect  6e49,            Do_SelfTest                       # diagnostic Self Tests
+21c8: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
 21ca: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
 21cc: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
 21ce: 74,21               vect  2174,            Set_Tasklist                      # recheck list A
@@ -178,19 +178,19 @@ the A9L:
 220a: d4,65               vect  65d4,            Set_Timers
 220c: fe,68               vect  68fe,            Update_timers                     # Update Timers
 220e: 8f,84               vect  848f,            Set_ign_timers
-2210: ca,4c               vect  4cca,            Update_flDOL                      # Update fuel comsumption for DOL
-2212: 7c,3e               vect  3e7c,            Load_Calc
-2214: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
-2216: 5b,4b               vect  4b5b,            Sub19                             # Something Injection ?
-2218: f4,4e               vect  4ef4,            Do_accelpump
-221a: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
-221c: b0,58               vect  58b0,            Update_Idle                       # Ccheck idle speed?
-221e: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
-2220: 3f,82               vect  823f,            CHk_HEGO                          # Check HEGO sensors
-2222: 28,82               vect  8228,            Sub115                            # Check brake and PS flags
-2224: 49,6e               vect  6e49,            Do_SelfTest                       # Ddiagnostic Self Tests
-2226: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
-2228: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+2210: 7c,3e               vect  3e7c,            Load_Calc
+2212: ba,40               vect  40ba,            Update_Egr                        # Update EGR stuff?
+2214: 5b,4b               vect  4b5b,            Sub19                             # Something Injection ?
+2216: f4,4e               vect  4ef4,            Do_accelpump
+2218: ee,50               vect  50ee,            Update_fpump                      # Update fuel pump enable
+221a: b0,58               vect  58b0,            Update_Idle                       # Ccheck idle speed?
+221c: c4,5e               vect  5ec4,            Upd_VSC                           # SCCS stuff checks VBAT
+221e: 3f,82               vect  823f,            CHk_HEGO                          # Check HEGO sensors
+2220: 49,6e               vect  6e49,            Do_SelfTest                       # Ddiagnostic Self Tests
+2222: 87,55               vect  5587,            Update_EGR2                       # Update EGR stuff
+2224: ca,63               vect  63ca,            Upd_canP                          # Update Canister Purge
+2226: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
+2228: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
 222a: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
 222c: 74,21               vect  2174,            Set_Tasklist                      # List C (rechecks List)
 
@@ -215,15 +215,15 @@ Becomes:
 
 0180:                                 B1 84  5D 23 86 37
 0190: 2E 22 4E 38  F3 37 F4 4E  5A 3D E4 3C  AC 3D DD 63
-01A0: D4 65 FE 68  8F 84 CA 4C  7C 3E BA 40  41 41 A1 41
-01B0: 00 47 D7 4A  EE 50 36 51  D9 54 C3 55  17 6D 91 61
-01C0: 35 63 B0 58  C4 5E 2E 73  49 6E 74 21  74 21 74 21
+01A0: D4 65 FE 68  8F 84 7C 3E  BA 40 41 41  A1 41 00 47 
+01B0: D7 4A EE 50  36 51 D9 54  C3 55 17 6D  91 61 35 63
+01C0: B0 58 C4 5E  2E 73 49 6E  74 21 74 21  74 21 74 21
 01D0: 74 21 74 21  74 21 74 21  74 21 74 21  B1 84 86 37
 01E0: 2E 22 4E 38  E4 3C AC 3D  D4 65 FE 68  8F 84 BA 40
 01F0: D7 4A EE 50  E7 5E 49 6E  87 55 CA 63  74 21 B1 84
 0200: 2E 22 4E 38  F3 37 E4 3C  AC 3D D4 65  FE 68 8F 84
-0210: CA 4C 7C 3E  BA 40 5B 4B  F4 4E EE 50  B0 58 C4 5E
-0220: 3F 82 28 82  49 6E 87 55  CA 63 74 21  74 21 
+0210: 7C 3E BA 40  5B 4B F4 4E  EE 50 B0 58  C4 5E 3F 82
+0220: 49 6E 87 55  CA 63 74 21  74 21 74 21  74 21 
 
 
 Rationale for the changes:
@@ -235,12 +235,12 @@ that can be done to reduce the load will help.
 
 The background loop driver is 11 instructions, taking 15.2 us; plus
 the return from the called routine takes another 3.2 us, for a total
-of 18.4 us.  And that's if the called routine returns immediately -
-which it won't; there is always a runtime check for hardware we know
-statically isn't there.
+of 18.4 us per entry.  And that's if the called routine returns
+immediately - which it won't; there is always a runtime check for
+hardware we know statically isn't there.
 
-List A (the normal run mode list) shrinks by 8 entries.  That's over
-140 us per background loop.
+List A (the normal run mode list) shrinks by 9 entries.  That's over
+165 us per background loop.
 
 Since we're only moving entries around in a table, and removing the
 ones that do nothing, the risk of harm is very low.
